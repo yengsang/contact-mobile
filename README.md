@@ -1,6 +1,6 @@
 # Android Contact Sync App
 
-This Android Studio project reads the device contact list and syncs it to the Strapi backend in the repo root.
+This Android Studio project reads the device contact list and syncs it to the production Strapi backend.
 
 ## What it does
 
@@ -13,25 +13,23 @@ This Android Studio project reads the device contact list and syncs it to the St
 
 1. Open Android Studio
 2. Choose `Open`
-3. Select the [android-app](/c:/Personal/Codex/Contact/android-app) folder
+3. Select the [android-app](</c:/Personal/Codex/Contact-Mobile/android-app>) folder
 4. Let Android Studio sync the Gradle project
 
 This project targets Android SDK 34 and expects Android Studio's embedded JDK 17.
 
 ## Configure The API
 
-- Emulator base URL: `http://10.0.2.2:1337`
-- Real device base URL: replace with your computer's LAN IP, for example `http://192.168.1.10:1337`
-- If your Strapi API is not public, create a Strapi API token and paste it into the app
+- Default production API base URL: `https://api.yengsang.com`
+- Paste your Strapi API token into the app before syncing
+- Only change the base URL if you intentionally want to test against a different environment
 
-## Strapi Permissions
+## Authentication
 
-If you are not using an API token, enable the following `Public` permissions in Strapi:
-
-- `app-user`: `find`, `create`
-- `contact`: `find`, `create`, `update`
+Create a Strapi API token in the admin portal and use that in the app.
 
 ## Notes
 
 - Contacts are de-duplicated on-device by `name + phone`
 - Server sync matches by `user + phone`, so repeat syncs update existing records instead of always inserting new ones
+- Production admin portal: `https://cmsportal.yengsang.com/admin`
