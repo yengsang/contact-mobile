@@ -1,0 +1,31 @@
+# Android Studio
+.idea/
+*.iml
+
+# Gradle
+.gradle/
+**/build/
+local.properties
+captures/
+
+# Generated files
+.externalNativeBuild/
+.cxx/
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
+
+# Kotlin/Java
+*.class
+
+# Signing
+*.jks
+*.keystore
+
+# Android generated
+app/release/
+app/debug/

@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">Contact Sync</string>
+    <string name="app_title">Contact Sync</string>
+    <string name="app_subtitle">Reads local phone contacts and syncs them to your Strapi backend.</string>
+    <string name="base_url_hint">Strapi base URL</string>
+    <string name="token_hint">API token (optional if public permissions are enabled)</string>
+    <string name="sync_contacts">Sync Contacts</string>
+    <string name="status_idle">Ready to sync.</string>
+</resources>
