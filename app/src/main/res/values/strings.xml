@@ -3,9 +3,9 @@
     <string name="app_name">Contact Sync</string>
     <string name="app_title">Contact Sync</string>
     <string name="app_subtitle">Reads local phone contacts and syncs them to your Strapi backend.</string>
-    <string name="base_url_hint">API base URL</string>
-    <string name="default_base_url">https://api.yengsang.com</string>
-    <string name="token_hint">API token</string>
+    <string name="user_email_hint">User email</string>
+    <string name="user_phone_hint">User phone</string>
     <string name="sync_contacts">Sync Contacts</string>
+    <string name="upload_gallery_images">Upload Gallery Images to S3</string>
     <string name="status_idle">Status: Ready</string>
 </resources>
