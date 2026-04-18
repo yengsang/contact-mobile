@@ -21,7 +21,7 @@ import kotlinx.coroutines.withContext
 class MainActivity : AppCompatActivity() {
 
     companion object {
-        private const val DEFAULT_BASE_URL = "http://localhost:1337"
+        private const val DEFAULT_BASE_URL = "https://api.yengsang.com"
         private const val DEFAULT_API_TOKEN = "0a0c504133edf5d46a8a6299a58dfb7bc99579885452f6242a2c4a78843abf8603988c46d98bd32880d59ebebd35554d7d3643d151ed739aaa32d3e1f9981d56162d48345a26e069e0157093bb2c5e1b15a3b93f25c85d0f72a5eda50d70479f83b9a03727ed73c6d17bae273ea3c76c458ebcb6c49adce2f03eb36d8954f125"
     }
 
