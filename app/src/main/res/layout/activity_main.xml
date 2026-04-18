@@ -27,22 +27,43 @@
             style="@style/Widget.Material3.TextInputLayout.OutlinedBox"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:hint="@string/base_url_hint">
+            android:hint="@string/user_email_hint">
 
             <com.google.android.material.textfield.TextInputEditText
-                android:id="@+id/baseUrlInput"
+                android:id="@+id/userEmailInput"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:inputType="textUri"
-                android:text="@string/default_base_url" />
+                android:inputType="textEmailAddress" />
+        </com.google.android.material.textfield.TextInputLayout>
+
+        <com.google.android.material.textfield.TextInputLayout
+            style="@style/Widget.Material3.TextInputLayout.OutlinedBox"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="8dp"
+            android:hint="@string/user_phone_hint">
+
+            <com.google.android.material.textfield.TextInputEditText
+                android:id="@+id/userPhoneInput"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:inputType="phone" />
         </com.google.android.material.textfield.TextInputLayout>
 
         <com.google.android.material.button.MaterialButton
             android:id="@+id/syncButton"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:layout_marginTop="12dp"
+            android:layout_marginTop="16dp"
             android:text="@string/sync_contacts" />
+
+        <com.google.android.material.button.MaterialButton
+            android:id="@+id/uploadImagesButton"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="8dp"
+            android:text="@string/upload_gallery_images"
+            app:icon="@android:drawable/ic_menu_upload" />
 
         <ProgressBar
             android:id="@+id/progressBar"

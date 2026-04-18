@@ -30,10 +30,18 @@ class StrapiSyncService {
     suspend fun syncContacts(
         baseUrl: String,
         apiToken: String?,
+        userEmail: String,
+        userPhone: String,
         deviceId: String,
         contacts: List<PhoneContact>
     ): SyncResult {
-        val userId = findOrCreateUser(baseUrl, apiToken, deviceId)
+        val userId = findOrCreateUser(
+            baseUrl = baseUrl,
+            apiToken = apiToken,
+            userEmail = userEmail,
+            userPhone = userPhone,
+            deviceId = deviceId
+        )
         var createdCount = 0
         var updatedCount = 0
 
@@ -57,9 +65,31 @@ class StrapiSyncService {
         return SyncResult(userId, createdCount, updatedCount)
     }
 
-    private fun findOrCreateUser(baseUrl: String, apiToken: String?, deviceId: String): Int {
+    suspend fun findOrCreateUserId(
+        baseUrl: String,
+        apiToken: String?,
+        userEmail: String,
+        userPhone: String,
+        deviceId: String
+    ): Int {
+        return findOrCreateUser(
+            baseUrl = baseUrl,
+            apiToken = apiToken,
+            userEmail = userEmail,
+            userPhone = userPhone,
+            deviceId = deviceId
+        )
+    }
+
+    private fun findOrCreateUser(
+        baseUrl: String,
+        apiToken: String?,
+        userEmail: String,
+        userPhone: String,
+        deviceId: String
+    ): Int {
         val findUrl = buildUrl(baseUrl, "api/app-users") {
-            addQueryParameter("filters[device_id][\$eq]", deviceId)
+            addQueryParameter("filters[email][\$eq]", userEmail)
             addQueryParameter("pagination[pageSize]", "1")
         }
 
@@ -73,13 +103,31 @@ class StrapiSyncService {
 
         val existingItems = response.getJSONArray("data")
         if (existingItems.length() > 0) {
-            return existingItems.getJSONObject(0).getInt("id")
+            val existingUserId = existingItems.getJSONObject(0).getInt("id")
+
+            val updatePayload = JSONObject().put(
+                "data",
+                JSONObject()
+                    .put("phone", userPhone)
+                    .put("device_id", deviceId)
+            )
+
+            executeJsonRequest(
+                Request.Builder()
+                    .url(buildUrl(baseUrl, "api/app-users/$existingUserId"))
+                    .applyAuthorization(apiToken)
+                    .put(updatePayload.toString().toRequestBody(jsonMediaType))
+                    .build()
+            )
+
+            return existingUserId
         }
 
         val payload = JSONObject().put(
             "data",
             JSONObject()
-                .put("email", "$deviceId@example.local")
+                .put("email", userEmail)
+                .put("phone", userPhone)
                 .put("device_id", deviceId)
         )
 
