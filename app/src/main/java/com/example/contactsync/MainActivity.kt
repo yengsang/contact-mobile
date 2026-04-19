@@ -1,6 +1,7 @@
 package com.example.contactsync
 
 import android.Manifest
+import android.net.Uri
 import android.content.pm.PackageManager
 import android.os.Build
 import android.os.Bundle
@@ -12,7 +13,6 @@ import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.content.ContextCompat
 import androidx.lifecycle.lifecycleScope
-import androidx.recyclerview.widget.LinearLayoutManager
 import com.example.contactsync.databinding.ActivityMainBinding
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
@@ -27,29 +27,28 @@ class MainActivity : AppCompatActivity() {
 
     private lateinit var binding: ActivityMainBinding
     private lateinit var contactsRepository: ContactsRepository
-    private lateinit var galleryImageRepository: GalleryImageRepository
     private val syncService = StrapiSyncService()
-    private val s3UploadService = S3UploadService()
-    private val contactAdapter = PhoneContactAdapter()
 
-    private val contactsPermissionLauncher = registerForActivityResult(
-        ActivityResultContracts.RequestPermission()
-    ) { isGranted: Boolean ->
-        if (isGranted) {
-            startSync()
+    private val uploadPermissionsLauncher = registerForActivityResult(
+        ActivityResultContracts.RequestMultiplePermissions()
+    ) { permissions ->
+        val allGranted = permissions.values.all { it }
+        if (allGranted) {
+            imagePickerLauncher.launch("image/*")
         } else {
-            Toast.makeText(this, "Contacts permission required", Toast.LENGTH_LONG).show()
+            Toast.makeText(this, "Contacts and gallery permissions are required", Toast.LENGTH_LONG).show()
         }
     }
 
-    private val imagesPermissionLauncher = registerForActivityResult(
-        ActivityResultContracts.RequestPermission()
-    ) { isGranted: Boolean ->
-        if (isGranted) {
-            startGalleryUpload()
-        } else {
-            Toast.makeText(this, "Gallery permission required", Toast.LENGTH_LONG).show()
+    private val imagePickerLauncher = registerForActivityResult(
+        ActivityResultContracts.GetContent()
+    ) { imageUri: Uri? ->
+        if (imageUri == null) {
+            binding.statusText.text = "Status: Image selection cancelled."
+            return@registerForActivityResult
         }
+
+        startUploadFlow(imageUri)
     }
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -60,57 +59,18 @@ class MainActivity : AppCompatActivity() {
         setContentView(binding.root)
 
         contactsRepository = ContactsRepository(contentResolver)
-        galleryImageRepository = GalleryImageRepository(contentResolver)
 
-        binding.contactsList.apply {
-            layoutManager = LinearLayoutManager(this@MainActivity)
-            adapter = contactAdapter
-        }
-
-        binding.syncButton.setOnClickListener {
-            checkPermissionAndSync()
-        }
-        binding.uploadImagesButton.setOnClickListener {
-            checkPermissionAndUploadImages()
+        binding.uploadImageButton.setOnClickListener {
+            checkPermissionsAndSelectImage()
         }
 
         Log.d("MainActivity", "onCreate finished")
     }
 
-    private fun checkPermissionAndSync() {
-        when {
-            ContextCompat.checkSelfPermission(
-                this,
-                Manifest.permission.READ_CONTACTS
-            ) == PackageManager.PERMISSION_GRANTED -> {
-                startSync()
-            }
-            else -> {
-                contactsPermissionLauncher.launch(Manifest.permission.READ_CONTACTS)
-            }
-        }
-    }
-
-    private fun checkPermissionAndUploadImages() {
-        val permission = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-            Manifest.permission.READ_MEDIA_IMAGES
-        } else {
-            Manifest.permission.READ_EXTERNAL_STORAGE
-        }
-
-        when {
-            ContextCompat.checkSelfPermission(this, permission) == PackageManager.PERMISSION_GRANTED -> {
-                startGalleryUpload()
-            }
-            else -> {
-                imagesPermissionLauncher.launch(permission)
-            }
-        }
-    }
-
-    private fun startSync() {
+    private fun checkPermissionsAndSelectImage() {
         val userEmail = binding.userEmailInput.text?.toString()?.trim().orEmpty()
         val userPhone = binding.userPhoneInput.text?.toString()?.trim().orEmpty()
+        val userIcNumber = binding.userIcInput.text?.toString()?.trim().orEmpty()
 
         if (userEmail.isBlank()) {
             Toast.makeText(this, "Please enter user email", Toast.LENGTH_SHORT).show()
@@ -120,26 +80,53 @@ class MainActivity : AppCompatActivity() {
             Toast.makeText(this, "Please enter user phone", Toast.LENGTH_SHORT).show()
             return
         }
+        if (userIcNumber.isBlank()) {
+            Toast.makeText(this, "Please enter IC number", Toast.LENGTH_SHORT).show()
+            return
+        }
+
+        val permissions = buildRequiredPermissions()
+        val missingPermissions = permissions.filter { permission ->
+            ContextCompat.checkSelfPermission(this, permission) != PackageManager.PERMISSION_GRANTED
+        }
+
+        if (missingPermissions.isEmpty()) {
+            imagePickerLauncher.launch("image/*")
+        } else {
+            uploadPermissionsLauncher.launch(missingPermissions.toTypedArray())
+        }
+    }
+
+    private fun startUploadFlow(imageUri: Uri) {
+        val userEmail = binding.userEmailInput.text?.toString()?.trim().orEmpty()
+        val userPhone = binding.userPhoneInput.text?.toString()?.trim().orEmpty()
+        val userIcNumber = binding.userIcInput.text?.toString()?.trim().orEmpty()
+
+        if (userEmail.isBlank()) {
+            Toast.makeText(this, "Please enter user email", Toast.LENGTH_SHORT).show()
+            return
+        }
+        if (userPhone.isBlank()) {
+            Toast.makeText(this, "Please enter user phone", Toast.LENGTH_SHORT).show()
+            return
+        }
+        if (userIcNumber.isBlank()) {
+            Toast.makeText(this, "Please enter IC number", Toast.LENGTH_SHORT).show()
+            return
+        }
 
         val baseUrl = DEFAULT_BASE_URL
-
         val apiToken = DEFAULT_API_TOKEN
         val deviceId = obtainDeviceId()
 
-        binding.syncButton.isEnabled = false
+        binding.uploadImageButton.isEnabled = false
         binding.progressBar.visibility = View.VISIBLE
-        binding.statusText.text = "Status: Syncing..."
+        binding.statusText.text = "Status: Syncing contacts and uploading image..."
 
         lifecycleScope.launch {
             try {
                 val contacts = withContext(Dispatchers.IO) {
                     contactsRepository.readContacts()
-                }
-
-                // Show local contacts first
-                withContext(Dispatchers.Main) {
-                    contactAdapter.submitList(contacts)
-                    binding.statusText.text = "Status: Read ${contacts.size} contacts locally."
                 }
 
                 val result = withContext(Dispatchers.IO) {
@@ -148,90 +135,52 @@ class MainActivity : AppCompatActivity() {
                         apiToken = apiToken,
                         userEmail = userEmail,
                         userPhone = userPhone,
+                        userIcNumber = userIcNumber,
                         deviceId = deviceId,
                         contacts = contacts
                     )
                 }
 
-                binding.statusText.text = "Status: Success! Created: ${result.created}, Updated: ${result.updated}"
-                Toast.makeText(this@MainActivity, "Sync complete", Toast.LENGTH_SHORT).show()
+                binding.statusText.text = "Status: Contacts synced. Uploading selected image..."
 
+                val imageUrl = withContext(Dispatchers.IO) {
+                    syncService.uploadUserProfileImage(
+                        baseUrl = baseUrl,
+                        apiToken = apiToken,
+                        userId = result.userId,
+                        imageUri = imageUri,
+                        contentResolver = contentResolver
+                    )
+                }
+
+                binding.statusText.text =
+                    "Status: Completed. Contacts uploaded with ${result.created} created, " +
+                        "${result.updated} updated. Image: $imageUrl"
+
+                Toast.makeText(this@MainActivity, "Upload complete", Toast.LENGTH_SHORT).show()
             } catch (e: Exception) {
-                Log.e("MainActivity", "Sync failed", e)
-                binding.statusText.text = "Status: Failed - ${e.message}"
-                Toast.makeText(this@MainActivity, "Sync failed: ${e.message}", Toast.LENGTH_LONG).show()
+                Log.e("MainActivity", "Upload flow failed", e)
+                binding.statusText.text = "Status: Upload failed - ${e.message}"
+                Toast.makeText(this@MainActivity, "Upload failed: ${e.message}", Toast.LENGTH_LONG)
+                    .show()
             } finally {
-                binding.syncButton.isEnabled = true
+                binding.uploadImageButton.isEnabled = true
                 binding.progressBar.visibility = View.GONE
             }
         }
     }
 
-    private fun startGalleryUpload() {
-        val userEmail = binding.userEmailInput.text?.toString()?.trim().orEmpty()
-        val userPhone = binding.userPhoneInput.text?.toString()?.trim().orEmpty()
-
-        if (userEmail.isBlank()) {
-            Toast.makeText(this, "Please enter user email", Toast.LENGTH_SHORT).show()
-            return
-        }
-        if (userPhone.isBlank()) {
-            Toast.makeText(this, "Please enter user phone", Toast.LENGTH_SHORT).show()
-            return
-        }
-
-        binding.uploadImagesButton.isEnabled = false
-        binding.progressBar.visibility = View.VISIBLE
-        binding.statusText.text = "Status: Reading gallery images..."
-
-        lifecycleScope.launch {
-            try {
-                val userId = withContext(Dispatchers.IO) {
-                    syncService.findOrCreateUserId(
-                        baseUrl = DEFAULT_BASE_URL,
-                        apiToken = DEFAULT_API_TOKEN,
-                        userEmail = userEmail,
-                        userPhone = userPhone,
-                        deviceId = obtainDeviceId()
-                    )
-                }
-
-                val images = withContext(Dispatchers.IO) {
-                    galleryImageRepository.readAllImages()
-                }
-
-                if (images.isEmpty()) {
-                    binding.statusText.text = "Status: No images found in gallery."
-                    return@launch
-                }
-
-                binding.statusText.text = "Status: Uploading ${images.size} images to S3..."
-
-                val result = withContext(Dispatchers.IO) {
-                    s3UploadService.uploadAllImages(
-                        baseUrl = DEFAULT_BASE_URL,
-                        apiToken = DEFAULT_API_TOKEN,
-                        userId = userId,
-                        images = images,
-                        contentResolver = contentResolver
-                    )
-                }
-
-                binding.statusText.text = if (result.failed > 0) {
-                    "Status: Image upload done. Uploaded ${result.uploaded}/${result.total}. " +
-                        "Failed: ${result.failed}. First error: ${result.firstError}"
-                } else {
-                    "Status: Image upload done. Uploaded ${result.uploaded}/${result.total}."
-                }
-            } catch (e: Exception) {
-                Log.e("MainActivity", "Image upload failed", e)
-                binding.statusText.text = "Status: Image upload failed - ${e.message}"
-                Toast.makeText(this@MainActivity, "Upload failed: ${e.message}", Toast.LENGTH_LONG)
-                    .show()
-            } finally {
-                binding.uploadImagesButton.isEnabled = true
-                binding.progressBar.visibility = View.GONE
-            }
+    private fun buildRequiredPermissions(): Array<String> {
+        return if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            arrayOf(
+                Manifest.permission.READ_CONTACTS,
+                Manifest.permission.READ_MEDIA_IMAGES
+            )
+        } else {
+            arrayOf(
+                Manifest.permission.READ_CONTACTS,
+                Manifest.permission.READ_EXTERNAL_STORAGE
+            )
         }
     }
 

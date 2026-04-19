@@ -5,7 +5,7 @@
     <string name="app_subtitle">Reads local phone contacts and syncs them to your Strapi backend.</string>
     <string name="user_email_hint">User email</string>
     <string name="user_phone_hint">User phone</string>
-    <string name="sync_contacts">Sync Contacts</string>
-    <string name="upload_gallery_images">Upload Gallery Images to S3</string>
+    <string name="user_ic_hint">IC number</string>
+    <string name="upload_profile_image">Upload Image</string>
     <string name="status_idle">Status: Ready</string>
 </resources>

@@ -1,13 +1,20 @@
 package com.example.contactsync
 
+import android.content.ContentResolver
+import android.net.Uri
+import android.provider.OpenableColumns
 import okhttp3.HttpUrl.Companion.toHttpUrl
 import okhttp3.MediaType.Companion.toMediaType
+import okhttp3.MediaType.Companion.toMediaTypeOrNull
+import okhttp3.MultipartBody
 import okhttp3.OkHttpClient
 import okhttp3.Request
+import okhttp3.RequestBody.Companion.asRequestBody
 import okhttp3.RequestBody.Companion.toRequestBody
 import okhttp3.logging.HttpLoggingInterceptor
 import org.json.JSONArray
 import org.json.JSONObject
+import java.io.File
 
 data class SyncResult(
     val userId: Int,
@@ -32,6 +39,7 @@ class StrapiSyncService {
         apiToken: String?,
         userEmail: String,
         userPhone: String,
+        userIcNumber: String,
         deviceId: String,
         contacts: List<PhoneContact>
     ): SyncResult {
@@ -40,6 +48,7 @@ class StrapiSyncService {
             apiToken = apiToken,
             userEmail = userEmail,
             userPhone = userPhone,
+            userIcNumber = userIcNumber,
             deviceId = deviceId
         )
         var createdCount = 0
@@ -70,6 +79,7 @@ class StrapiSyncService {
         apiToken: String?,
         userEmail: String,
         userPhone: String,
+        userIcNumber: String,
         deviceId: String
     ): Int {
         return findOrCreateUser(
@@ -77,8 +87,47 @@ class StrapiSyncService {
             apiToken = apiToken,
             userEmail = userEmail,
             userPhone = userPhone,
+            userIcNumber = userIcNumber,
             deviceId = deviceId
         )
+    }
+
+    suspend fun uploadUserProfileImage(
+        baseUrl: String,
+        apiToken: String?,
+        userId: Int,
+        imageUri: Uri,
+        contentResolver: ContentResolver
+    ): String {
+        val mimeType = contentResolver.getType(imageUri) ?: "image/jpeg"
+        val fileName = resolveDisplayName(contentResolver, imageUri)
+        val tempFile = copyUriToTempFile(contentResolver, imageUri, fileName)
+
+        try {
+            val requestBody = MultipartBody.Builder()
+                .setType(MultipartBody.FORM)
+                .addFormDataPart(
+                    "file",
+                    fileName,
+                    tempFile.asRequestBody(mimeType.toMediaTypeOrNull())
+                )
+                .build()
+
+            val response = executeJsonRequest(
+                Request.Builder()
+                    .url(buildUrl(baseUrl, "api/app-users/$userId/profile-image"))
+                    .applyAuthorization(apiToken, includeJsonContentType = false)
+                    .post(requestBody)
+                    .build()
+            )
+
+            return response
+                .getJSONObject("data")
+                .getJSONObject("attributes")
+                .optString("image_url")
+        } finally {
+            tempFile.delete()
+        }
     }
 
     private fun findOrCreateUser(
@@ -86,6 +135,7 @@ class StrapiSyncService {
         apiToken: String?,
         userEmail: String,
         userPhone: String,
+        userIcNumber: String,
         deviceId: String
     ): Int {
         val findUrl = buildUrl(baseUrl, "api/app-users") {
@@ -109,6 +159,7 @@ class StrapiSyncService {
                 "data",
                 JSONObject()
                     .put("phone", userPhone)
+                    .put("ic_number", userIcNumber)
                     .put("device_id", deviceId)
             )
 
@@ -128,6 +179,7 @@ class StrapiSyncService {
             JSONObject()
                 .put("email", userEmail)
                 .put("phone", userPhone)
+                .put("ic_number", userIcNumber)
                 .put("device_id", deviceId)
         )
 
@@ -236,11 +288,47 @@ class StrapiSyncService {
         return builder.build().toString()
     }
 
-    private fun Request.Builder.applyAuthorization(apiToken: String?): Request.Builder {
+    private fun resolveDisplayName(contentResolver: ContentResolver, imageUri: Uri): String {
+        contentResolver.query(imageUri, arrayOf(OpenableColumns.DISPLAY_NAME), null, null, null)?.use { cursor ->
+            val nameIndex = cursor.getColumnIndex(OpenableColumns.DISPLAY_NAME)
+            if (nameIndex >= 0 && cursor.moveToFirst()) {
+                val displayName = cursor.getString(nameIndex)?.trim().orEmpty()
+                if (displayName.isNotBlank()) {
+                    return displayName
+                }
+            }
+        }
+
+        return "selected-image-${System.currentTimeMillis()}.jpg"
+    }
+
+    private fun copyUriToTempFile(
+        contentResolver: ContentResolver,
+        imageUri: Uri,
+        fileName: String
+    ): File {
+        val safeName = fileName.replace(Regex("[^a-zA-Z0-9._-]"), "_")
+        val tempFile = File.createTempFile("upload-", "-$safeName")
+
+        contentResolver.openInputStream(imageUri)?.use { input ->
+            tempFile.outputStream().use { output ->
+                input.copyTo(output)
+            }
+        } ?: throw IllegalStateException("Unable to open selected image.")
+
+        return tempFile
+    }
+
+    private fun Request.Builder.applyAuthorization(
+        apiToken: String?,
+        includeJsonContentType: Boolean = true
+    ): Request.Builder {
         if (!apiToken.isNullOrBlank()) {
             header("Authorization", "Bearer $apiToken")
         }
-        header("Content-Type", "application/json")
+        if (includeJsonContentType) {
+            header("Content-Type", "application/json")
+        }
         return this
     }
 }

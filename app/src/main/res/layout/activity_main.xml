@@ -50,19 +50,26 @@
                 android:inputType="phone" />
         </com.google.android.material.textfield.TextInputLayout>
 
-        <com.google.android.material.button.MaterialButton
-            android:id="@+id/syncButton"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:layout_marginTop="16dp"
-            android:text="@string/sync_contacts" />
-
-        <com.google.android.material.button.MaterialButton
-            android:id="@+id/uploadImagesButton"
+        <com.google.android.material.textfield.TextInputLayout
+            style="@style/Widget.Material3.TextInputLayout.OutlinedBox"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:layout_marginTop="8dp"
-            android:text="@string/upload_gallery_images"
+            android:hint="@string/user_ic_hint">
+
+            <com.google.android.material.textfield.TextInputEditText
+                android:id="@+id/userIcInput"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:inputType="text" />
+        </com.google.android.material.textfield.TextInputLayout>
+
+        <com.google.android.material.button.MaterialButton
+            android:id="@+id/uploadImageButton"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="16dp"
+            android:text="@string/upload_profile_image"
             app:icon="@android:drawable/ic_menu_upload" />
 
         <ProgressBar
@@ -86,12 +93,5 @@
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintTop_toBottomOf="@id/configContainer" />
-
-    <androidx.recyclerview.widget.RecyclerView
-        android:id="@+id/contactsList"
-        android:layout_width="match_parent"
-        android:layout_height="0dp"
-        app:layout_constraintBottom_toBottomOf="parent"
-        app:layout_constraintTop_toBottomOf="@id/statusText" />
 
 </androidx.constraintlayout.widget.ConstraintLayout>
