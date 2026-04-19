@@ -34,7 +34,7 @@ class S3UploadService {
 
     suspend fun uploadAllImages(
         baseUrl: String,
-        apiToken: String?,
+        appApiKey: String,
         userId: Int,
         images: List<GalleryImage>,
         contentResolver: ContentResolver
@@ -44,7 +44,7 @@ class S3UploadService {
 
         images.forEach { image ->
             runCatching {
-                val presigned = requestPresignedUpload(baseUrl, apiToken, userId, image)
+                val presigned = requestPresignedUpload(baseUrl, appApiKey, userId, image)
                 uploadImageToS3(presigned, image, contentResolver)
             }.onSuccess {
                 successCount += 1
@@ -66,7 +66,7 @@ class S3UploadService {
 
     private fun requestPresignedUpload(
         baseUrl: String,
-        apiToken: String?,
+        appApiKey: String,
         userId: Int,
         image: GalleryImage
     ): PresignedUpload {
@@ -79,7 +79,7 @@ class S3UploadService {
         val request = Request.Builder()
             .url(endpoint)
             .header("Content-Type", "application/json")
-            .applyAuthorization(apiToken)
+            .applyAppApiKey(appApiKey)
             .post(
                 requestPayload.toString()
                     .toRequestBody("application/json; charset=utf-8".toMediaTypeOrNull())
@@ -161,10 +161,8 @@ class S3UploadService {
         return builder.build().toString()
     }
 
-    private fun Request.Builder.applyAuthorization(apiToken: String?): Request.Builder {
-        if (!apiToken.isNullOrBlank()) {
-            header("Authorization", "Bearer $apiToken")
-        }
+    private fun Request.Builder.applyAppApiKey(appApiKey: String): Request.Builder {
+        header("x-app-api-key", appApiKey)
         return this
     }
 }

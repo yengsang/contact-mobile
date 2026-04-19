@@ -3,16 +3,24 @@ plugins {
     id("org.jetbrains.kotlin.android")
 }
 
+val appApiKeyValue = providers.environmentVariable("APP_API_KEY")
+    .orElse(providers.gradleProperty("APP_API_KEY"))
+    .orElse("")
+    .get()
+    .replace("\\", "\\\\")
+    .replace("\"", "\\\"")
+
 android {
     namespace = "com.memberreward.contact"
-    compileSdk = 34
+    compileSdk = 35
 
     defaultConfig {
         applicationId = "com.memberreward.contact"
         minSdk = 26
-        targetSdk = 34
-        versionCode = 2
-        versionName = "2.0"
+        targetSdk = 35
+        versionCode = 4
+        versionName = "4.0"
+        buildConfigField("String", "APP_API_KEY", "\"$appApiKeyValue\"")
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }

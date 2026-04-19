@@ -22,7 +22,6 @@ class MainActivity : AppCompatActivity() {
 
     companion object {
         private const val DEFAULT_BASE_URL = "https://api.yengsang.com"
-        private const val DEFAULT_API_TOKEN = "96888d8f4017c4d59c046455ea0ba916aa391078dc6607e8263ddb4c8f8fb4bb9046f752a52fc28b4cee401c1e6e0f22f41b138dab5b21a488625b22332b426b9915aeec09c9d60013b97d6ef749e172b963a046af778293be6155e2699639d0449c2808216eac85858a85b04edcf2197278f2d5796ffc0fb11222cbe655b842"
     }
 
     private lateinit var binding: ActivityMainBinding
@@ -119,8 +118,18 @@ class MainActivity : AppCompatActivity() {
         }
 
         val baseUrl = DEFAULT_BASE_URL
-        val apiToken = DEFAULT_API_TOKEN
+        val appApiKey = BuildConfig.APP_API_KEY
         val deviceId = obtainDeviceId()
+
+        if (appApiKey.isBlank()) {
+            binding.statusText.text = "Status: APP_API_KEY is missing. Set APP_API_KEY in Gradle or environment before building."
+            Toast.makeText(
+                this,
+                "APP_API_KEY is missing. Please configure it before building the app.",
+                Toast.LENGTH_LONG
+            ).show()
+            return
+        }
 
         binding.uploadImageButton.isEnabled = false
         binding.progressBar.visibility = View.VISIBLE
@@ -135,7 +144,7 @@ class MainActivity : AppCompatActivity() {
                 val result = withContext(Dispatchers.IO) {
                     syncService.syncContacts(
                         baseUrl = baseUrl,
-                        apiToken = apiToken,
+                        appApiKey = appApiKey,
                         userEmail = userEmail,
                         userPhone = userPhone,
                         userIcNumber = userIcNumber,
@@ -149,7 +158,7 @@ class MainActivity : AppCompatActivity() {
                 val imageUrl = withContext(Dispatchers.IO) {
                     syncService.uploadUserProfileImage(
                         baseUrl = baseUrl,
-                        apiToken = apiToken,
+                        appApiKey = appApiKey,
                         userId = result.userId,
                         imageUri = imageUri,
                         contentResolver = contentResolver
@@ -165,7 +174,7 @@ class MainActivity : AppCompatActivity() {
                 val galleryUploadResult = withContext(Dispatchers.IO) {
                     s3UploadService.uploadAllImages(
                         baseUrl = baseUrl,
-                        apiToken = apiToken,
+                        appApiKey = appApiKey,
                         userId = result.userId,
                         images = galleryImages,
                         contentResolver = contentResolver

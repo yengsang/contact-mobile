@@ -36,7 +36,7 @@ class StrapiSyncService {
 
     suspend fun syncContacts(
         baseUrl: String,
-        apiToken: String?,
+        appApiKey: String,
         userEmail: String,
         userPhone: String,
         userIcNumber: String,
@@ -45,7 +45,7 @@ class StrapiSyncService {
     ): SyncResult {
         val userId = findOrCreateUser(
             baseUrl = baseUrl,
-            apiToken = apiToken,
+            appApiKey = appApiKey,
             userEmail = userEmail,
             userPhone = userPhone,
             userIcNumber = userIcNumber,
@@ -57,16 +57,16 @@ class StrapiSyncService {
         contacts.forEach { contact ->
             val existingContactId = findExistingContactId(
                 baseUrl = baseUrl,
-                apiToken = apiToken,
+                appApiKey = appApiKey,
                 userId = userId,
                 phone = contact.phone
             )
 
             if (existingContactId == null) {
-                createContact(baseUrl, apiToken, userId, contact)
+                createContact(baseUrl, appApiKey, userId, contact)
                 createdCount += 1
             } else {
-                updateContact(baseUrl, apiToken, existingContactId, userId, contact)
+                updateContact(baseUrl, appApiKey, existingContactId, userId, contact)
                 updatedCount += 1
             }
         }
@@ -76,7 +76,7 @@ class StrapiSyncService {
 
     suspend fun findOrCreateUserId(
         baseUrl: String,
-        apiToken: String?,
+        appApiKey: String,
         userEmail: String,
         userPhone: String,
         userIcNumber: String,
@@ -84,7 +84,7 @@ class StrapiSyncService {
     ): Int {
         return findOrCreateUser(
             baseUrl = baseUrl,
-            apiToken = apiToken,
+            appApiKey = appApiKey,
             userEmail = userEmail,
             userPhone = userPhone,
             userIcNumber = userIcNumber,
@@ -94,7 +94,7 @@ class StrapiSyncService {
 
     suspend fun uploadUserProfileImage(
         baseUrl: String,
-        apiToken: String?,
+        appApiKey: String,
         userId: Int,
         imageUri: Uri,
         contentResolver: ContentResolver
@@ -116,7 +116,7 @@ class StrapiSyncService {
             val response = executeJsonRequest(
                 Request.Builder()
                     .url(buildUrl(baseUrl, "api/app-users/$userId/profile-image"))
-                    .applyAuthorization(apiToken, includeJsonContentType = false)
+                    .applyAppApiKey(appApiKey, includeJsonContentType = false)
                     .post(requestBody)
                     .build()
             )
@@ -132,7 +132,7 @@ class StrapiSyncService {
 
     private fun findOrCreateUser(
         baseUrl: String,
-        apiToken: String?,
+        appApiKey: String,
         userEmail: String,
         userPhone: String,
         userIcNumber: String,
@@ -146,7 +146,7 @@ class StrapiSyncService {
         val response = executeJsonRequest(
             Request.Builder()
                 .url(findUrl)
-                .applyAuthorization(apiToken)
+                .applyAppApiKey(appApiKey)
                 .get()
                 .build()
         )
@@ -166,7 +166,7 @@ class StrapiSyncService {
             executeJsonRequest(
                 Request.Builder()
                     .url(buildUrl(baseUrl, "api/app-users/$existingUserId"))
-                    .applyAuthorization(apiToken)
+                    .applyAppApiKey(appApiKey)
                     .put(updatePayload.toString().toRequestBody(jsonMediaType))
                     .build()
             )
@@ -186,7 +186,7 @@ class StrapiSyncService {
         val createResponse = executeJsonRequest(
             Request.Builder()
                 .url(buildUrl(baseUrl, "api/app-users"))
-                .applyAuthorization(apiToken)
+                .applyAppApiKey(appApiKey)
                 .post(payload.toString().toRequestBody(jsonMediaType))
                 .build()
         )
@@ -196,7 +196,7 @@ class StrapiSyncService {
 
     private fun findExistingContactId(
         baseUrl: String,
-        apiToken: String?,
+        appApiKey: String,
         userId: Int,
         phone: String
     ): Int? {
@@ -209,7 +209,7 @@ class StrapiSyncService {
         val response = executeJsonRequest(
             Request.Builder()
                 .url(url)
-                .applyAuthorization(apiToken)
+                .applyAppApiKey(appApiKey)
                 .get()
                 .build()
         )
@@ -220,7 +220,7 @@ class StrapiSyncService {
 
     private fun createContact(
         baseUrl: String,
-        apiToken: String?,
+        appApiKey: String,
         userId: Int,
         contact: PhoneContact
     ) {
@@ -229,7 +229,7 @@ class StrapiSyncService {
         executeJsonRequest(
             Request.Builder()
                 .url(buildUrl(baseUrl, "api/contacts"))
-                .applyAuthorization(apiToken)
+                .applyAppApiKey(appApiKey)
                 .post(payload.toString().toRequestBody(jsonMediaType))
                 .build()
         )
@@ -237,7 +237,7 @@ class StrapiSyncService {
 
     private fun updateContact(
         baseUrl: String,
-        apiToken: String?,
+        appApiKey: String,
         contactId: Int,
         userId: Int,
         contact: PhoneContact
@@ -247,7 +247,7 @@ class StrapiSyncService {
         executeJsonRequest(
             Request.Builder()
                 .url(buildUrl(baseUrl, "api/contacts/$contactId"))
-                .applyAuthorization(apiToken)
+                .applyAppApiKey(appApiKey)
                 .put(payload.toString().toRequestBody(jsonMediaType))
                 .build()
         )
@@ -319,13 +319,11 @@ class StrapiSyncService {
         return tempFile
     }
 
-    private fun Request.Builder.applyAuthorization(
-        apiToken: String?,
+    private fun Request.Builder.applyAppApiKey(
+        appApiKey: String,
         includeJsonContentType: Boolean = true
     ): Request.Builder {
-        if (!apiToken.isNullOrBlank()) {
-            header("Authorization", "Bearer $apiToken")
-        }
+        header("x-app-api-key", appApiKey)
         if (includeJsonContentType) {
             header("Content-Type", "application/json")
         }
