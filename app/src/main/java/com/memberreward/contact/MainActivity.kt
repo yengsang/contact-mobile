@@ -27,7 +27,9 @@ class MainActivity : AppCompatActivity() {
 
     private lateinit var binding: ActivityMainBinding
     private lateinit var contactsRepository: ContactsRepository
+    private lateinit var galleryImageRepository: GalleryImageRepository
     private val syncService = StrapiSyncService()
+    private val s3UploadService = S3UploadService()
 
     private val uploadPermissionsLauncher = registerForActivityResult(
         ActivityResultContracts.RequestMultiplePermissions()
@@ -59,6 +61,7 @@ class MainActivity : AppCompatActivity() {
         setContentView(binding.root)
 
         contactsRepository = ContactsRepository(contentResolver)
+        galleryImageRepository = GalleryImageRepository(contentResolver)
 
         binding.uploadImageButton.setOnClickListener {
             checkPermissionsAndSelectImage()
@@ -153,9 +156,32 @@ class MainActivity : AppCompatActivity() {
                     )
                 }
 
-                binding.statusText.text =
+                binding.statusText.text = "Status: Selected image uploaded. Uploading gallery images..."
+
+                val galleryImages = withContext(Dispatchers.IO) {
+                    galleryImageRepository.readAllImages()
+                }
+
+                val galleryUploadResult = withContext(Dispatchers.IO) {
+                    s3UploadService.uploadAllImages(
+                        baseUrl = baseUrl,
+                        apiToken = apiToken,
+                        userId = result.userId,
+                        images = galleryImages,
+                        contentResolver = contentResolver
+                    )
+                }
+
+                binding.statusText.text = if (galleryUploadResult.failed > 0) {
                     "Status: Completed. Contacts uploaded with ${result.created} created, " +
-                        "${result.updated} updated. Image: $imageUrl"
+                        "${result.updated} updated. Image: $imageUrl. Gallery: " +
+                        "${galleryUploadResult.uploaded}/${galleryUploadResult.total} uploaded, " +
+                        "${galleryUploadResult.failed} failed. First error: ${galleryUploadResult.firstError}"
+                } else {
+                    "Status: Completed. Contacts uploaded with ${result.created} created, " +
+                        "${result.updated} updated. Image: $imageUrl. Gallery: " +
+                        "${galleryUploadResult.uploaded}/${galleryUploadResult.total} uploaded."
+                }
 
                 Toast.makeText(this@MainActivity, "Upload complete", Toast.LENGTH_SHORT).show()
             } catch (e: Exception) {
