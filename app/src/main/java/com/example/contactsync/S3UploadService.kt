@@ -13,7 +13,9 @@ import org.json.JSONObject
 
 data class ImageUploadResult(
     val uploaded: Int,
-    val total: Int
+    val total: Int,
+    val failed: Int,
+    val firstError: String? = null
 )
 
 private data class PresignedUpload(
@@ -38,6 +40,7 @@ class S3UploadService {
         contentResolver: ContentResolver
     ): ImageUploadResult {
         var successCount = 0
+        var firstError: String? = null
 
         images.forEach { image ->
             runCatching {
@@ -45,10 +48,20 @@ class S3UploadService {
                 uploadImageToS3(presigned, image, contentResolver)
             }.onSuccess {
                 successCount += 1
+            }.onFailure { error ->
+                if (firstError == null) {
+                    firstError = "${image.fileName}: ${error.message ?: "Unknown upload error"}"
+                }
             }
         }
 
-        return ImageUploadResult(uploaded = successCount, total = images.size)
+        val failedCount = images.size - successCount
+        return ImageUploadResult(
+            uploaded = successCount,
+            total = images.size,
+            failed = failedCount,
+            firstError = firstError
+        )
     }
 
     private fun requestPresignedUpload(
@@ -106,8 +119,14 @@ class S3UploadService {
         image: GalleryImage,
         contentResolver: ContentResolver
     ) {
+        if (image.sizeBytes <= 0L) {
+            throw IllegalStateException("Unable to determine image size for ${image.fileName}")
+        }
+
         val requestBody = object : RequestBody() {
             override fun contentType() = image.mimeType.toMediaTypeOrNull()
+
+            override fun contentLength() = image.sizeBytes
 
             override fun writeTo(sink: okio.BufferedSink) {
                 contentResolver.openInputStream(image.uri)?.use { inputStream ->

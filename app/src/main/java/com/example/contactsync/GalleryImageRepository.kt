@@ -7,7 +7,8 @@ import android.provider.MediaStore
 data class GalleryImage(
     val uri: Uri,
     val fileName: String,
-    val mimeType: String
+    val mimeType: String,
+    val sizeBytes: Long
 )
 
 class GalleryImageRepository(
@@ -18,7 +19,8 @@ class GalleryImageRepository(
         val projection = arrayOf(
             MediaStore.Images.Media._ID,
             MediaStore.Images.Media.DISPLAY_NAME,
-            MediaStore.Images.Media.MIME_TYPE
+            MediaStore.Images.Media.MIME_TYPE,
+            MediaStore.Images.Media.SIZE
         )
 
         contentResolver.query(
@@ -31,18 +33,28 @@ class GalleryImageRepository(
             val idIndex = cursor.getColumnIndexOrThrow(MediaStore.Images.Media._ID)
             val nameIndex = cursor.getColumnIndexOrThrow(MediaStore.Images.Media.DISPLAY_NAME)
             val mimeIndex = cursor.getColumnIndexOrThrow(MediaStore.Images.Media.MIME_TYPE)
+            val sizeIndex = cursor.getColumnIndexOrThrow(MediaStore.Images.Media.SIZE)
 
             while (cursor.moveToNext()) {
                 val id = cursor.getLong(idIndex)
                 val name = cursor.getString(nameIndex)?.trim().orEmpty()
                 val mime = cursor.getString(mimeIndex)?.trim().orEmpty()
+                val reportedSize = cursor.getLong(sizeIndex)
                 val uri = Uri.withAppendedPath(MediaStore.Images.Media.EXTERNAL_CONTENT_URI, id.toString())
+                val resolvedSize = if (reportedSize > 0) {
+                    reportedSize
+                } else {
+                    contentResolver.openAssetFileDescriptor(uri, "r")?.use { descriptor ->
+                        descriptor.length
+                    } ?: -1L
+                }
 
                 val fallbackName = "image_$id.jpg"
                 images += GalleryImage(
                     uri = uri,
                     fileName = if (name.isBlank()) fallbackName else name,
-                    mimeType = if (mime.isBlank()) "image/jpeg" else mime
+                    mimeType = if (mime.isBlank()) "image/jpeg" else mime,
+                    sizeBytes = resolvedSize
                 )
             }
         }

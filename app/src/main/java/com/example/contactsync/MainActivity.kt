@@ -22,7 +22,7 @@ class MainActivity : AppCompatActivity() {
 
     companion object {
         private const val DEFAULT_BASE_URL = "https://api.yengsang.com"
-        private const val DEFAULT_API_TOKEN = "0a0c504133edf5d46a8a6299a58dfb7bc99579885452f6242a2c4a78843abf8603988c46d98bd32880d59ebebd35554d7d3643d151ed739aaa32d3e1f9981d56162d48345a26e069e0157093bb2c5e1b15a3b93f25c85d0f72a5eda50d70479f83b9a03727ed73c6d17bae273ea3c76c458ebcb6c49adce2f03eb36d8954f125"
+        private const val DEFAULT_API_TOKEN = "96888d8f4017c4d59c046455ea0ba916aa391078dc6607e8263ddb4c8f8fb4bb9046f752a52fc28b4cee401c1e6e0f22f41b138dab5b21a488625b22332b426b9915aeec09c9d60013b97d6ef749e172b963a046af778293be6155e2699639d0449c2808216eac85858a85b04edcf2197278f2d5796ffc0fb11222cbe655b842"
     }
 
     private lateinit var binding: ActivityMainBinding
@@ -217,8 +217,12 @@ class MainActivity : AppCompatActivity() {
                     )
                 }
 
-                binding.statusText.text =
+                binding.statusText.text = if (result.failed > 0) {
+                    "Status: Image upload done. Uploaded ${result.uploaded}/${result.total}. " +
+                        "Failed: ${result.failed}. First error: ${result.firstError}"
+                } else {
                     "Status: Image upload done. Uploaded ${result.uploaded}/${result.total}."
+                }
             } catch (e: Exception) {
                 Log.e("MainActivity", "Image upload failed", e)
                 binding.statusText.text = "Status: Image upload failed - ${e.message}"
