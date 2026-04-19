@@ -1,9 +1,9 @@
-package com.example.contactsync
+package com.memberreward.contact
 
 import android.view.LayoutInflater
 import android.view.ViewGroup
 import androidx.recyclerview.widget.RecyclerView
-import com.example.contactsync.databinding.ItemContactBinding
+import com.memberreward.contact.databinding.ItemContactBinding
 
 class PhoneContactAdapter : RecyclerView.Adapter<PhoneContactAdapter.ContactViewHolder>() {
 

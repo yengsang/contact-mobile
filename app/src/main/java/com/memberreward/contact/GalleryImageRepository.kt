@@ -1,4 +1,4 @@
-package com.example.contactsync
+package com.memberreward.contact
 
 import android.content.ContentResolver
 import android.net.Uri

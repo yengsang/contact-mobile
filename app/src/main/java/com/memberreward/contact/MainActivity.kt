@@ -1,4 +1,4 @@
-package com.example.contactsync
+package com.memberreward.contact
 
 import android.Manifest
 import android.net.Uri
@@ -13,7 +13,7 @@ import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.content.ContextCompat
 import androidx.lifecycle.lifecycleScope
-import com.example.contactsync.databinding.ActivityMainBinding
+import com.memberreward.contact.databinding.ActivityMainBinding
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
