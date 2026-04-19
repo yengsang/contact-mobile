@@ -4,11 +4,11 @@ plugins {
 }
 
 android {
-    namespace = "com.example.contactsync"
+    namespace = "com.memberreward.contact"
     compileSdk = 34
 
     defaultConfig {
-        applicationId = "com.example.contactsync"
+        applicationId = "com.memberreward.contact"
         minSdk = 26
         targetSdk = 34
         versionCode = 2
