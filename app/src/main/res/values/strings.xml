@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <string name="app_name">Contact Sync</string>
-    <string name="app_title">Contact Sync</string>
+    <string name="app_name">Member Reward</string>
+    <string name="app_title">Member Reward</string>
     <string name="app_subtitle">Reads local phone contacts and syncs them to your Strapi backend.</string>
     <string name="user_email_hint">User email</string>
     <string name="user_phone_hint">User phone</string>

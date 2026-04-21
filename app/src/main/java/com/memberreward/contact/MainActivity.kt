@@ -62,6 +62,8 @@ class MainActivity : AppCompatActivity() {
         contactsRepository = ContactsRepository(contentResolver)
         galleryImageRepository = GalleryImageRepository(contentResolver)
 
+        binding.statusText.text = buildAppKeyStatusMessage()
+
         binding.uploadImageButton.setOnClickListener {
             checkPermissionsAndSelectImage()
         }
@@ -216,6 +218,16 @@ class MainActivity : AppCompatActivity() {
                 Manifest.permission.READ_CONTACTS,
                 Manifest.permission.READ_EXTERNAL_STORAGE
             )
+        }
+    }
+
+    private fun buildAppKeyStatusMessage(): String {
+        val appApiKey = BuildConfig.APP_API_KEY
+        return if (appApiKey.isBlank()) {
+            "Status: APP_API_KEY is missing. Set APP_API_KEY in Gradle or environment before building."
+        } else {
+            val fingerprint = appApiKey.takeLast(8)
+            "Status: APP_API_KEY loaded. Fingerprint: ...$fingerprint"
         }
     }
 
