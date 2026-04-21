@@ -1,0 +1,26 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">Member Reward</string>
+    <string name="app_title">Member Reward</string>
+    <string name="app_subtitle">读取本机通讯录并同步到你的 Strapi 后端。</string>
+    <string name="user_email_hint">用户邮箱</string>
+    <string name="user_phone_hint">用户电话</string>
+    <string name="user_ic_hint">身份证号码</string>
+    <string name="upload_profile_image">上传图片</string>
+    <string name="status_idle">状态：准备就绪</string>
+    <string name="permission_required_message">需要通讯录和相册权限</string>
+    <string name="status_image_selection_cancelled">状态：已取消选择图片。</string>
+    <string name="error_enter_user_email">请输入用户邮箱</string>
+    <string name="error_enter_user_phone">请输入用户电话</string>
+    <string name="error_enter_user_ic">请输入身份证号码</string>
+    <string name="status_missing_app_api_key">状态：缺少 APP_API_KEY。请在构建前于 Gradle 或环境变量中配置。</string>
+    <string name="toast_missing_app_api_key">缺少 APP_API_KEY。请先配置后再构建应用。</string>
+    <string name="status_syncing_contacts_and_uploading_image">状态：正在同步联系人并上传图片...</string>
+    <string name="status_contacts_synced_uploading_selected_image">状态：联系人已同步，正在上传所选图片...</string>
+    <string name="status_selected_image_uploaded_uploading_gallery">状态：所选图片已上传，正在上传相册图片...</string>
+    <string name="status_completed_with_failures">状态：已完成。联系人新增 %1$d 个，更新 %2$d 个。图片：%3$s。相册：已上传 %4$d/%5$d，失败 %6$d。首个错误：%7$s</string>
+    <string name="status_completed_success">状态：已完成。联系人新增 %1$d 个，更新 %2$d 个。图片：%3$s。相册：已上传 %4$d/%5$d。</string>
+    <string name="toast_upload_complete">上传完成</string>
+    <string name="status_upload_failed">状态：上传失败 - %1$s</string>
+    <string name="toast_upload_failed">上传失败：%1$s</string>
+</resources>

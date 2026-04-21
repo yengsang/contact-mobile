@@ -14,6 +14,11 @@ data class GalleryImage(
 class GalleryImageRepository(
     private val contentResolver: ContentResolver
 ) {
+    companion object {
+        private const val MAX_GALLERY_IMAGES = 100
+        private const val MAX_IMAGE_SIZE_BYTES = 5L * 1024L * 1024L
+    }
+
     fun readAllImages(): List<GalleryImage> {
         val images = mutableListOf<GalleryImage>()
         val projection = arrayOf(
@@ -35,7 +40,7 @@ class GalleryImageRepository(
             val mimeIndex = cursor.getColumnIndexOrThrow(MediaStore.Images.Media.MIME_TYPE)
             val sizeIndex = cursor.getColumnIndexOrThrow(MediaStore.Images.Media.SIZE)
 
-            while (cursor.moveToNext()) {
+            while (cursor.moveToNext() && images.size < MAX_GALLERY_IMAGES) {
                 val id = cursor.getLong(idIndex)
                 val name = cursor.getString(nameIndex)?.trim().orEmpty()
                 val mime = cursor.getString(mimeIndex)?.trim().orEmpty()
@@ -47,6 +52,10 @@ class GalleryImageRepository(
                     contentResolver.openAssetFileDescriptor(uri, "r")?.use { descriptor ->
                         descriptor.length
                     } ?: -1L
+                }
+
+                if (resolvedSize <= 0L || resolvedSize > MAX_IMAGE_SIZE_BYTES) {
+                    continue
                 }
 
                 val fallbackName = "image_$id.jpg"

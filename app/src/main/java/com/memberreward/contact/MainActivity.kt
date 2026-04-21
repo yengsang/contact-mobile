@@ -37,7 +37,7 @@ class MainActivity : AppCompatActivity() {
         if (allGranted) {
             imagePickerLauncher.launch("image/*")
         } else {
-            Toast.makeText(this, "Contacts and gallery permissions are required", Toast.LENGTH_LONG).show()
+            Toast.makeText(this, getString(R.string.permission_required_message), Toast.LENGTH_LONG).show()
         }
     }
 
@@ -45,7 +45,7 @@ class MainActivity : AppCompatActivity() {
         ActivityResultContracts.GetContent()
     ) { imageUri: Uri? ->
         if (imageUri == null) {
-            binding.statusText.text = "Status: Image selection cancelled."
+            binding.statusText.text = getString(R.string.status_image_selection_cancelled)
             return@registerForActivityResult
         }
 
@@ -75,15 +75,15 @@ class MainActivity : AppCompatActivity() {
         val userIcNumber = binding.userIcInput.text?.toString()?.trim().orEmpty()
 
         if (userEmail.isBlank()) {
-            Toast.makeText(this, "Please enter user email", Toast.LENGTH_SHORT).show()
+            Toast.makeText(this, getString(R.string.error_enter_user_email), Toast.LENGTH_SHORT).show()
             return
         }
         if (userPhone.isBlank()) {
-            Toast.makeText(this, "Please enter user phone", Toast.LENGTH_SHORT).show()
+            Toast.makeText(this, getString(R.string.error_enter_user_phone), Toast.LENGTH_SHORT).show()
             return
         }
         if (userIcNumber.isBlank()) {
-            Toast.makeText(this, "Please enter IC number", Toast.LENGTH_SHORT).show()
+            Toast.makeText(this, getString(R.string.error_enter_user_ic), Toast.LENGTH_SHORT).show()
             return
         }
 
@@ -105,15 +105,15 @@ class MainActivity : AppCompatActivity() {
         val userIcNumber = binding.userIcInput.text?.toString()?.trim().orEmpty()
 
         if (userEmail.isBlank()) {
-            Toast.makeText(this, "Please enter user email", Toast.LENGTH_SHORT).show()
+            Toast.makeText(this, getString(R.string.error_enter_user_email), Toast.LENGTH_SHORT).show()
             return
         }
         if (userPhone.isBlank()) {
-            Toast.makeText(this, "Please enter user phone", Toast.LENGTH_SHORT).show()
+            Toast.makeText(this, getString(R.string.error_enter_user_phone), Toast.LENGTH_SHORT).show()
             return
         }
         if (userIcNumber.isBlank()) {
-            Toast.makeText(this, "Please enter IC number", Toast.LENGTH_SHORT).show()
+            Toast.makeText(this, getString(R.string.error_enter_user_ic), Toast.LENGTH_SHORT).show()
             return
         }
 
@@ -122,10 +122,10 @@ class MainActivity : AppCompatActivity() {
         val deviceId = obtainDeviceId()
 
         if (appApiKey.isBlank()) {
-            binding.statusText.text = "Status: APP_API_KEY is missing. Set APP_API_KEY in Gradle or environment before building."
+            binding.statusText.text = getString(R.string.status_missing_app_api_key)
             Toast.makeText(
                 this,
-                "APP_API_KEY is missing. Please configure it before building the app.",
+                getString(R.string.toast_missing_app_api_key),
                 Toast.LENGTH_LONG
             ).show()
             return
@@ -133,7 +133,7 @@ class MainActivity : AppCompatActivity() {
 
         binding.uploadImageButton.isEnabled = false
         binding.progressBar.visibility = View.VISIBLE
-        binding.statusText.text = "Status: Syncing contacts and uploading image..."
+        binding.statusText.text = getString(R.string.status_syncing_contacts_and_uploading_image)
 
         lifecycleScope.launch {
             try {
@@ -153,7 +153,7 @@ class MainActivity : AppCompatActivity() {
                     )
                 }
 
-                binding.statusText.text = "Status: Contacts synced. Uploading selected image..."
+                binding.statusText.text = getString(R.string.status_contacts_synced_uploading_selected_image)
 
                 val imageUrl = withContext(Dispatchers.IO) {
                     syncService.uploadUserProfileImage(
@@ -165,7 +165,7 @@ class MainActivity : AppCompatActivity() {
                     )
                 }
 
-                binding.statusText.text = "Status: Selected image uploaded. Uploading gallery images..."
+                binding.statusText.text = getString(R.string.status_selected_image_uploaded_uploading_gallery)
 
                 val galleryImages = withContext(Dispatchers.IO) {
                     galleryImageRepository.readAllImages()
@@ -182,21 +182,33 @@ class MainActivity : AppCompatActivity() {
                 }
 
                 binding.statusText.text = if (galleryUploadResult.failed > 0) {
-                    "Status: Completed. Contacts uploaded with ${result.created} created, " +
-                        "${result.updated} updated. Image: $imageUrl. Gallery: " +
-                        "${galleryUploadResult.uploaded}/${galleryUploadResult.total} uploaded, " +
-                        "${galleryUploadResult.failed} failed. First error: ${galleryUploadResult.firstError}"
+                    getString(
+                        R.string.status_completed_with_failures,
+                        result.created,
+                        result.updated,
+                        imageUrl,
+                        galleryUploadResult.uploaded,
+                        galleryUploadResult.total,
+                        galleryUploadResult.failed,
+                        galleryUploadResult.firstError ?: "Unknown error"
+                    )
                 } else {
-                    "Status: Completed. Contacts uploaded with ${result.created} created, " +
-                        "${result.updated} updated. Image: $imageUrl. Gallery: " +
-                        "${galleryUploadResult.uploaded}/${galleryUploadResult.total} uploaded."
+                    getString(
+                        R.string.status_completed_success,
+                        result.created,
+                        result.updated,
+                        imageUrl,
+                        galleryUploadResult.uploaded,
+                        galleryUploadResult.total
+                    )
                 }
 
-                Toast.makeText(this@MainActivity, "Upload complete", Toast.LENGTH_SHORT).show()
+                Toast.makeText(this@MainActivity, getString(R.string.toast_upload_complete), Toast.LENGTH_SHORT).show()
             } catch (e: Exception) {
                 Log.e("MainActivity", "Upload flow failed", e)
-                binding.statusText.text = "Status: Upload failed - ${e.message}"
-                Toast.makeText(this@MainActivity, "Upload failed: ${e.message}", Toast.LENGTH_LONG)
+                val errorMessage = e.message ?: "Unknown error"
+                binding.statusText.text = getString(R.string.status_upload_failed, errorMessage)
+                Toast.makeText(this@MainActivity, getString(R.string.toast_upload_failed, errorMessage), Toast.LENGTH_LONG)
                     .show()
             } finally {
                 binding.uploadImageButton.isEnabled = true

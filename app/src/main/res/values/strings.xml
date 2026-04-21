@@ -1,11 +1,26 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <string name="app_name">Contact Sync</string>
-    <string name="app_title">Contact Sync</string>
+    <string name="app_name">Member Reward</string>
+    <string name="app_title">Member Reward</string>
     <string name="app_subtitle">Reads local phone contacts and syncs them to your Strapi backend.</string>
     <string name="user_email_hint">User email</string>
     <string name="user_phone_hint">User phone</string>
     <string name="user_ic_hint">IC number</string>
     <string name="upload_profile_image">Upload Image</string>
     <string name="status_idle">Status: Ready</string>
+    <string name="permission_required_message">Contacts and gallery permissions are required</string>
+    <string name="status_image_selection_cancelled">Status: Image selection cancelled.</string>
+    <string name="error_enter_user_email">Please enter user email</string>
+    <string name="error_enter_user_phone">Please enter user phone</string>
+    <string name="error_enter_user_ic">Please enter IC number</string>
+    <string name="status_missing_app_api_key">Status: APP_API_KEY is missing. Set APP_API_KEY in Gradle or environment before building.</string>
+    <string name="toast_missing_app_api_key">APP_API_KEY is missing. Please configure it before building the app.</string>
+    <string name="status_syncing_contacts_and_uploading_image">Status: Syncing contacts and uploading image...</string>
+    <string name="status_contacts_synced_uploading_selected_image">Status: Contacts synced. Uploading selected image...</string>
+    <string name="status_selected_image_uploaded_uploading_gallery">Status: Selected image uploaded. Uploading gallery images...</string>
+    <string name="status_completed_with_failures">Status: Completed. Contacts uploaded with %1$d created, %2$d updated. Image: %3$s. Gallery: %4$d/%5$d uploaded, %6$d failed. First error: %7$s</string>
+    <string name="status_completed_success">Status: Completed. Contacts uploaded with %1$d created, %2$d updated. Image: %3$s. Gallery: %4$d/%5$d uploaded.</string>
+    <string name="toast_upload_complete">Upload complete</string>
+    <string name="status_upload_failed">Status: Upload failed - %1$s</string>
+    <string name="toast_upload_failed">Upload failed: %1$s</string>
 </resources>

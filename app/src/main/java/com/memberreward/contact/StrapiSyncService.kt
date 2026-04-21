@@ -200,10 +200,9 @@ class StrapiSyncService {
         userId: Int,
         phone: String
     ): Int? {
-        val url = buildUrl(baseUrl, "api/contacts") {
-            addQueryParameter("filters[user][id][\$eq]", userId.toString())
-            addQueryParameter("filters[phone][\$eq]", phone)
-            addQueryParameter("pagination[pageSize]", "1")
+        val url = buildUrl(baseUrl, "api/app-users/$userId/contacts") {
+            addQueryParameter("phone", phone)
+            addQueryParameter("pageSize", "1")
         }
 
         val response = executeJsonRequest(
@@ -254,10 +253,13 @@ class StrapiSyncService {
     }
 
     private fun buildContactJson(userId: Int, contact: PhoneContact): JSONObject {
+        val relationPayload = JSONObject()
+            .put("connect", JSONArray().put(userId))
+
         return JSONObject()
             .put("name", contact.name)
             .put("phone", contact.phone)
-            .put("user", userId)
+            .put("user", relationPayload)
             .apply {
                 if (!contact.email.isNullOrBlank()) {
                     put("email", contact.email)
