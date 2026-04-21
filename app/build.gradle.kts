@@ -18,8 +18,8 @@ android {
         applicationId = "com.memberreward.contact"
         minSdk = 26
         targetSdk = 35
-        versionCode = 7
-        versionName = "7.0"
+        versionCode = 8
+        versionName = "8.0"
         buildConfigField("String", "APP_API_KEY", "\"$appApiKeyValue\"")
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
