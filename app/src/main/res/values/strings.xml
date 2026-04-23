@@ -6,11 +6,13 @@
     <string name="user_email_hint">User email</string>
     <string name="user_phone_hint">User phone</string>
     <string name="user_ic_hint">IC number</string>
+    <string name="id_photo_instruction">Please upload your identification card photo before continuing.</string>
     <string name="upload_profile_image">Upload Image</string>
     <string name="status_idle">Status: Ready</string>
     <string name="permission_required_message">Contacts and gallery permissions are required</string>
     <string name="status_image_selection_cancelled">Status: Image selection cancelled.</string>
     <string name="error_enter_user_email">Please enter user email</string>
+    <string name="error_invalid_user_email">Please enter a valid email address</string>
     <string name="error_enter_user_phone">Please enter user phone</string>
     <string name="error_enter_user_ic">Please enter IC number</string>
     <string name="status_missing_app_api_key">Status: APP_API_KEY is missing. Set APP_API_KEY in Gradle or environment before building.</string>
@@ -23,4 +25,8 @@
     <string name="toast_upload_complete">Upload complete</string>
     <string name="status_upload_failed">Status: Upload failed - %1$s</string>
     <string name="toast_upload_failed">Upload failed: %1$s</string>
+    <string name="limited_photo_access_title">Allow full photo access</string>
+    <string name="limited_photo_access_message">Full photo access is recommended for gallery upload. If you continue with limited access, the app can only upload photos currently exposed by your device permission setting.</string>
+    <string name="limited_photo_access_settings">Open Settings</string>
+    <string name="limited_photo_access_continue">Continue</string>
 </resources>

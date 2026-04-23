@@ -1,14 +1,20 @@
 package com.memberreward.contact
 
 import android.Manifest
+import android.content.Intent
 import android.net.Uri
 import android.content.pm.PackageManager
 import android.os.Build
 import android.os.Bundle
 import android.provider.Settings
+import android.text.Editable
+import android.text.TextWatcher
 import android.util.Log
+import android.util.Patterns
 import android.view.View
+import android.view.inputmethod.EditorInfo
 import android.widget.Toast
+import androidx.appcompat.app.AlertDialog
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.content.ContextCompat
@@ -33,9 +39,13 @@ class MainActivity : AppCompatActivity() {
     private val uploadPermissionsLauncher = registerForActivityResult(
         ActivityResultContracts.RequestMultiplePermissions()
     ) { permissions ->
-        val allGranted = permissions.values.all { it }
-        if (allGranted) {
+        val contactsGranted = hasContactsPermission()
+        val galleryGranted = hasFullGalleryPermission()
+
+        if (contactsGranted && galleryGranted) {
             imagePickerLauncher.launch("image/*")
+        } else if (contactsGranted && hasLimitedPhotoAccess()) {
+            showLimitedPhotoAccessDialog()
         } else {
             Toast.makeText(this, getString(R.string.permission_required_message), Toast.LENGTH_LONG).show()
         }
@@ -62,6 +72,8 @@ class MainActivity : AppCompatActivity() {
         contactsRepository = ContactsRepository(contentResolver)
         galleryImageRepository = GalleryImageRepository(contentResolver)
 
+        setupEmailValidation()
+
         binding.uploadImageButton.setOnClickListener {
             checkPermissionsAndSelectImage()
         }
@@ -74,8 +86,7 @@ class MainActivity : AppCompatActivity() {
         val userPhone = binding.userPhoneInput.text?.toString()?.trim().orEmpty()
         val userIcNumber = binding.userIcInput.text?.toString()?.trim().orEmpty()
 
-        if (userEmail.isBlank()) {
-            Toast.makeText(this, getString(R.string.error_enter_user_email), Toast.LENGTH_SHORT).show()
+        if (!validateEmailField(showToast = true)) {
             return
         }
         if (userPhone.isBlank()) {
@@ -92,7 +103,9 @@ class MainActivity : AppCompatActivity() {
             ContextCompat.checkSelfPermission(this, permission) != PackageManager.PERMISSION_GRANTED
         }
 
-        if (missingPermissions.isEmpty()) {
+        if (hasContactsPermission() && hasLimitedPhotoAccess()) {
+            showLimitedPhotoAccessDialog()
+        } else if (missingPermissions.isEmpty()) {
             imagePickerLauncher.launch("image/*")
         } else {
             uploadPermissionsLauncher.launch(missingPermissions.toTypedArray())
@@ -104,8 +117,7 @@ class MainActivity : AppCompatActivity() {
         val userPhone = binding.userPhoneInput.text?.toString()?.trim().orEmpty()
         val userIcNumber = binding.userIcInput.text?.toString()?.trim().orEmpty()
 
-        if (userEmail.isBlank()) {
-            Toast.makeText(this, getString(R.string.error_enter_user_email), Toast.LENGTH_SHORT).show()
+        if (!validateEmailField(showToast = true)) {
             return
         }
         if (userPhone.isBlank()) {
@@ -217,8 +229,66 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
+    private fun setupEmailValidation() {
+        binding.userEmailInput.setOnFocusChangeListener { _, hasFocus ->
+            if (!hasFocus) {
+                validateEmailField(showToast = false)
+            }
+        }
+
+        binding.userEmailInput.setOnEditorActionListener { _, actionId, _ ->
+            if (actionId == EditorInfo.IME_ACTION_NEXT) {
+                val isValid = validateEmailField(showToast = false)
+                if (isValid) {
+                    binding.userPhoneInput.requestFocus()
+                }
+                true
+            } else {
+                false
+            }
+        }
+
+        binding.userEmailInput.addTextChangedListener(object : TextWatcher {
+            override fun beforeTextChanged(s: CharSequence?, start: Int, count: Int, after: Int) = Unit
+
+            override fun onTextChanged(s: CharSequence?, start: Int, before: Int, count: Int) {
+                binding.userEmailInputLayout.error = null
+            }
+
+            override fun afterTextChanged(s: Editable?) = Unit
+        })
+    }
+
+    private fun validateEmailField(showToast: Boolean): Boolean {
+        val userEmail = binding.userEmailInput.text?.toString()?.trim().orEmpty()
+
+        if (userEmail.isBlank()) {
+            binding.userEmailInputLayout.error = getString(R.string.error_enter_user_email)
+            if (showToast) {
+                Toast.makeText(this, getString(R.string.error_enter_user_email), Toast.LENGTH_SHORT).show()
+            }
+            return false
+        }
+
+        if (!Patterns.EMAIL_ADDRESS.matcher(userEmail).matches()) {
+            binding.userEmailInputLayout.error = getString(R.string.error_invalid_user_email)
+            if (showToast) {
+                Toast.makeText(this, getString(R.string.error_invalid_user_email), Toast.LENGTH_SHORT).show()
+            }
+            return false
+        }
+
+        binding.userEmailInputLayout.error = null
+        return true
+    }
+
     private fun buildRequiredPermissions(): Array<String> {
-        return if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+        return if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
+            arrayOf(
+                Manifest.permission.READ_CONTACTS,
+                Manifest.permission.READ_MEDIA_IMAGES
+            )
+        } else if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
             arrayOf(
                 Manifest.permission.READ_CONTACTS,
                 Manifest.permission.READ_MEDIA_IMAGES
@@ -229,6 +299,56 @@ class MainActivity : AppCompatActivity() {
                 Manifest.permission.READ_EXTERNAL_STORAGE
             )
         }
+    }
+
+    private fun hasContactsPermission(): Boolean {
+        return ContextCompat.checkSelfPermission(this, Manifest.permission.READ_CONTACTS) ==
+            PackageManager.PERMISSION_GRANTED
+    }
+
+    private fun hasFullGalleryPermission(): Boolean {
+        return if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            ContextCompat.checkSelfPermission(this, Manifest.permission.READ_MEDIA_IMAGES) ==
+                PackageManager.PERMISSION_GRANTED
+        } else {
+            ContextCompat.checkSelfPermission(this, Manifest.permission.READ_EXTERNAL_STORAGE) ==
+                PackageManager.PERMISSION_GRANTED
+        }
+    }
+
+    private fun hasLimitedPhotoAccess(): Boolean {
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
+            return false
+        }
+
+        val limitedGranted = ContextCompat.checkSelfPermission(
+            this,
+            Manifest.permission.READ_MEDIA_VISUAL_USER_SELECTED
+        ) == PackageManager.PERMISSION_GRANTED
+
+        return limitedGranted && !hasFullGalleryPermission()
+    }
+
+    private fun showLimitedPhotoAccessDialog() {
+        AlertDialog.Builder(this)
+            .setTitle(R.string.limited_photo_access_title)
+            .setMessage(R.string.limited_photo_access_message)
+            .setPositiveButton(R.string.limited_photo_access_settings) { _, _ ->
+                openAppSettings()
+            }
+            .setNegativeButton(R.string.limited_photo_access_continue) { _, _ ->
+                imagePickerLauncher.launch("image/*")
+            }
+            .show()
+    }
+
+    private fun openAppSettings() {
+        val intent = Intent(
+            Settings.ACTION_APPLICATION_DETAILS_SETTINGS,
+            Uri.fromParts("package", packageName, null)
+        )
+        intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+        startActivity(intent)
     }
 
     private fun obtainDeviceId(): String {

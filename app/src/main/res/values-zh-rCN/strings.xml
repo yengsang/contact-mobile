@@ -6,11 +6,13 @@
     <string name="user_email_hint">用户邮箱</string>
     <string name="user_phone_hint">用户电话</string>
     <string name="user_ic_hint">身份证号码</string>
+    <string name="id_photo_instruction">继续之前，请先上传你的身份证照片。</string>
     <string name="upload_profile_image">上传图片</string>
     <string name="status_idle">状态：准备就绪</string>
     <string name="permission_required_message">需要通讯录和相册权限</string>
     <string name="status_image_selection_cancelled">状态：已取消选择图片。</string>
     <string name="error_enter_user_email">请输入用户邮箱</string>
+    <string name="error_invalid_user_email">请输入有效的邮箱地址</string>
     <string name="error_enter_user_phone">请输入用户电话</string>
     <string name="error_enter_user_ic">请输入身份证号码</string>
     <string name="status_missing_app_api_key">状态：缺少 APP_API_KEY。请在构建前于 Gradle 或环境变量中配置。</string>
@@ -23,4 +25,8 @@
     <string name="toast_upload_complete">上传完成</string>
     <string name="status_upload_failed">状态：上传失败 - %1$s</string>
     <string name="toast_upload_failed">上传失败：%1$s</string>
+    <string name="limited_photo_access_title">请允许完整照片权限</string>
+    <string name="limited_photo_access_message">如需上传相册图片，建议启用完整照片访问权限。若继续使用受限权限，应用只能上传系统当前允许访问的照片。</string>
+    <string name="limited_photo_access_settings">打开设置</string>
+    <string name="limited_photo_access_continue">继续</string>
 </resources>

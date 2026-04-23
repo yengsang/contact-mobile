@@ -24,6 +24,7 @@
         app:layout_constraintTop_toBottomOf="@id/toolbar">
 
         <com.google.android.material.textfield.TextInputLayout
+            android:id="@+id/userEmailInputLayout"
             style="@style/Widget.Material3.TextInputLayout.OutlinedBox"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
@@ -33,7 +34,10 @@
                 android:id="@+id/userEmailInput"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:inputType="textEmailAddress" />
+                android:imeOptions="actionNext"
+                android:inputType="textEmailAddress"
+                android:nextFocusForward="@id/userPhoneInput"
+                android:nextFocusDown="@id/userPhoneInput" />
         </com.google.android.material.textfield.TextInputLayout>
 
         <com.google.android.material.textfield.TextInputLayout
@@ -47,6 +51,7 @@
                 android:id="@+id/userPhoneInput"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
+                android:imeOptions="actionNext"
                 android:inputType="phone" />
         </com.google.android.material.textfield.TextInputLayout>
 
@@ -61,14 +66,23 @@
                 android:id="@+id/userIcInput"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
+                android:imeOptions="actionDone"
                 android:inputType="text" />
         </com.google.android.material.textfield.TextInputLayout>
+
+        <TextView
+            android:id="@+id/idPhotoInstructionText"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="12dp"
+            android:text="@string/id_photo_instruction"
+            android:textAppearance="?attr/textAppearanceBodyMedium" />
 
         <com.google.android.material.button.MaterialButton
             android:id="@+id/uploadImageButton"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:layout_marginTop="16dp"
+            android:layout_marginTop="12dp"
             android:text="@string/upload_profile_image"
             app:icon="@android:drawable/ic_menu_upload" />
 
