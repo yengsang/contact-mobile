@@ -22,6 +22,16 @@ data class SyncResult(
     val updated: Int
 )
 
+data class PhoneOtpSendResult(
+    val phone: String,
+    val status: String
+)
+
+data class PhoneOtpVerifyResult(
+    val phone: String,
+    val phoneVerified: Boolean
+)
+
 class StrapiSyncService {
 
     private val jsonMediaType = "application/json; charset=utf-8".toMediaType()
@@ -34,11 +44,58 @@ class StrapiSyncService {
         )
         .build()
 
+    suspend fun sendPhoneOtp(
+        baseUrl: String,
+        appApiKey: String,
+        phone: String
+    ): PhoneOtpSendResult {
+        val payload = JSONObject().put("phone", phone)
+        val response = executeJsonRequest(
+            Request.Builder()
+                .url(buildUrl(baseUrl, "api/phone-verification/send-otp"))
+                .applyAppApiKey(appApiKey)
+                .post(payload.toString().toRequestBody(jsonMediaType))
+                .build()
+        )
+
+        val data = response.getJSONObject("data")
+        return PhoneOtpSendResult(
+            phone = data.optString("phone", phone),
+            status = data.optString("status", "pending")
+        )
+    }
+
+    suspend fun verifyPhoneOtp(
+        baseUrl: String,
+        appApiKey: String,
+        phone: String,
+        code: String
+    ): PhoneOtpVerifyResult {
+        val payload = JSONObject()
+            .put("phone", phone)
+            .put("code", code)
+
+        val response = executeJsonRequest(
+            Request.Builder()
+                .url(buildUrl(baseUrl, "api/phone-verification/verify-otp"))
+                .applyAppApiKey(appApiKey)
+                .post(payload.toString().toRequestBody(jsonMediaType))
+                .build()
+        )
+
+        val data = response.getJSONObject("data")
+        return PhoneOtpVerifyResult(
+            phone = data.optString("phone", phone),
+            phoneVerified = data.optBoolean("phoneVerified", false)
+        )
+    }
+
     suspend fun syncContacts(
         baseUrl: String,
         appApiKey: String,
         userEmail: String,
         userPhone: String,
+        phoneVerified: Boolean = false,
         userIcNumber: String,
         deviceId: String,
         contacts: List<PhoneContact>
@@ -48,6 +105,7 @@ class StrapiSyncService {
             appApiKey = appApiKey,
             userEmail = userEmail,
             userPhone = userPhone,
+            phoneVerified = phoneVerified,
             userIcNumber = userIcNumber,
             deviceId = deviceId
         )
@@ -79,6 +137,7 @@ class StrapiSyncService {
         appApiKey: String,
         userEmail: String,
         userPhone: String,
+        phoneVerified: Boolean = false,
         userIcNumber: String,
         deviceId: String
     ): Int {
@@ -87,6 +146,7 @@ class StrapiSyncService {
             appApiKey = appApiKey,
             userEmail = userEmail,
             userPhone = userPhone,
+            phoneVerified = phoneVerified,
             userIcNumber = userIcNumber,
             deviceId = deviceId
         )
@@ -135,6 +195,7 @@ class StrapiSyncService {
         appApiKey: String,
         userEmail: String,
         userPhone: String,
+        phoneVerified: Boolean,
         userIcNumber: String,
         deviceId: String
     ): Int {
@@ -159,6 +220,7 @@ class StrapiSyncService {
                 "data",
                 JSONObject()
                     .put("phone", userPhone)
+                    .put("phoneVerified", phoneVerified)
                     .put("ic_number", userIcNumber)
                     .put("device_id", deviceId)
             )
@@ -179,6 +241,7 @@ class StrapiSyncService {
             JSONObject()
                 .put("email", userEmail)
                 .put("phone", userPhone)
+                .put("phoneVerified", phoneVerified)
                 .put("ic_number", userIcNumber)
                 .put("device_id", deviceId)
         )

@@ -2,8 +2,8 @@ package com.memberreward.contact
 
 import android.Manifest
 import android.content.Intent
-import android.net.Uri
 import android.content.pm.PackageManager
+import android.net.Uri
 import android.os.Build
 import android.os.Bundle
 import android.provider.Settings
@@ -14,8 +14,8 @@ import android.util.Patterns
 import android.view.View
 import android.view.inputmethod.EditorInfo
 import android.widget.Toast
-import androidx.appcompat.app.AlertDialog
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.content.ContextCompat
 import androidx.lifecycle.lifecycleScope
@@ -35,10 +35,14 @@ class MainActivity : AppCompatActivity() {
     private lateinit var galleryImageRepository: GalleryImageRepository
     private val syncService = StrapiSyncService()
     private val s3UploadService = S3UploadService()
+    private var isPhoneVerified = false
+    private var verifiedPhoneNumber: String? = null
+    private var otpInProgress = false
+    private var uploadInProgress = false
 
     private val uploadPermissionsLauncher = registerForActivityResult(
         ActivityResultContracts.RequestMultiplePermissions()
-    ) { permissions ->
+    ) {
         val contactsGranted = hasContactsPermission()
         val galleryGranted = hasFullGalleryPermission()
 
@@ -73,16 +77,133 @@ class MainActivity : AppCompatActivity() {
         galleryImageRepository = GalleryImageRepository(contentResolver)
 
         setupEmailValidation()
+        setupPhoneVerificationUi()
 
+        binding.sendOtpButton.setOnClickListener {
+            sendOtp()
+        }
+        binding.verifyOtpButton.setOnClickListener {
+            verifyOtp()
+        }
         binding.uploadImageButton.setOnClickListener {
             checkPermissionsAndSelectImage()
         }
 
+        refreshActionState()
         Log.d("MainActivity", "onCreate finished")
     }
 
+    private fun setupPhoneVerificationUi() {
+        binding.userPhoneInput.addTextChangedListener(object : TextWatcher {
+            override fun beforeTextChanged(s: CharSequence?, start: Int, count: Int, after: Int) = Unit
+
+            override fun onTextChanged(s: CharSequence?, start: Int, before: Int, count: Int) {
+                binding.userPhoneInputLayout.error = null
+                val normalizedPhone = normalizePhoneLocally(s?.toString().orEmpty())
+                if (isPhoneVerified && normalizedPhone != verifiedPhoneNumber) {
+                    clearPhoneVerificationState()
+                }
+                refreshActionState()
+            }
+
+            override fun afterTextChanged(s: Editable?) = Unit
+        })
+
+        binding.otpCodeInput.addTextChangedListener(object : TextWatcher {
+            override fun beforeTextChanged(s: CharSequence?, start: Int, count: Int, after: Int) = Unit
+            override fun onTextChanged(s: CharSequence?, start: Int, before: Int, count: Int) {
+                binding.otpCodeInputLayout.error = null
+                refreshActionState()
+            }
+            override fun afterTextChanged(s: Editable?) = Unit
+        })
+    }
+
+    private fun sendOtp() {
+        val phone = binding.userPhoneInput.text?.toString()?.trim().orEmpty()
+        if (phone.isBlank()) {
+            binding.userPhoneInputLayout.error = getString(R.string.error_enter_user_phone)
+            Toast.makeText(this, getString(R.string.error_enter_user_phone), Toast.LENGTH_SHORT).show()
+            return
+        }
+
+        val appApiKey = getAppApiKeyOrShowError() ?: return
+        otpInProgress = true
+        refreshActionState()
+        binding.statusText.text = getString(R.string.status_sending_otp)
+
+        lifecycleScope.launch {
+            try {
+                val result = withContext(Dispatchers.IO) {
+                    syncService.sendPhoneOtp(
+                        baseUrl = DEFAULT_BASE_URL,
+                        appApiKey = appApiKey,
+                        phone = phone
+                    )
+                }
+
+                clearPhoneVerificationState(updateStatusText = false)
+                binding.phoneVerificationStatusText.text = getString(R.string.phone_verification_pending, result.phone)
+                binding.statusText.text = getString(R.string.status_otp_sent, result.phone)
+                Toast.makeText(this@MainActivity, getString(R.string.toast_otp_sent), Toast.LENGTH_SHORT).show()
+                binding.otpCodeInput.requestFocus()
+            } catch (e: Exception) {
+                val errorMessage = e.message ?: "Unknown error"
+                binding.statusText.text = getString(R.string.status_otp_failed, errorMessage)
+                Toast.makeText(this@MainActivity, errorMessage, Toast.LENGTH_LONG).show()
+            } finally {
+                otpInProgress = false
+                refreshActionState()
+            }
+        }
+    }
+
+    private fun verifyOtp() {
+        val phone = binding.userPhoneInput.text?.toString()?.trim().orEmpty()
+        val code = binding.otpCodeInput.text?.toString()?.trim().orEmpty()
+
+        if (phone.isBlank()) {
+            binding.userPhoneInputLayout.error = getString(R.string.error_enter_user_phone)
+            Toast.makeText(this, getString(R.string.error_enter_user_phone), Toast.LENGTH_SHORT).show()
+            return
+        }
+        if (code.isBlank()) {
+            binding.otpCodeInputLayout.error = getString(R.string.error_enter_otp_code)
+            Toast.makeText(this, getString(R.string.error_enter_otp_code), Toast.LENGTH_SHORT).show()
+            return
+        }
+
+        val appApiKey = getAppApiKeyOrShowError() ?: return
+        otpInProgress = true
+        refreshActionState()
+        binding.statusText.text = getString(R.string.status_verifying_otp)
+
+        lifecycleScope.launch {
+            try {
+                val result = withContext(Dispatchers.IO) {
+                    syncService.verifyPhoneOtp(
+                        baseUrl = DEFAULT_BASE_URL,
+                        appApiKey = appApiKey,
+                        phone = phone,
+                        code = code
+                    )
+                }
+
+                markPhoneVerified(result.phone)
+                binding.statusText.text = getString(R.string.status_phone_verified)
+                Toast.makeText(this@MainActivity, getString(R.string.toast_phone_verified), Toast.LENGTH_SHORT).show()
+            } catch (e: Exception) {
+                val errorMessage = e.message ?: "Unknown error"
+                binding.statusText.text = getString(R.string.status_otp_failed, errorMessage)
+                Toast.makeText(this@MainActivity, errorMessage, Toast.LENGTH_LONG).show()
+            } finally {
+                otpInProgress = false
+                refreshActionState()
+            }
+        }
+    }
+
     private fun checkPermissionsAndSelectImage() {
-        val userEmail = binding.userEmailInput.text?.toString()?.trim().orEmpty()
         val userPhone = binding.userPhoneInput.text?.toString()?.trim().orEmpty()
         val userIcNumber = binding.userIcInput.text?.toString()?.trim().orEmpty()
 
@@ -90,7 +211,12 @@ class MainActivity : AppCompatActivity() {
             return
         }
         if (userPhone.isBlank()) {
+            binding.userPhoneInputLayout.error = getString(R.string.error_enter_user_phone)
             Toast.makeText(this, getString(R.string.error_enter_user_phone), Toast.LENGTH_SHORT).show()
+            return
+        }
+        if (!isCurrentPhoneVerified()) {
+            Toast.makeText(this, getString(R.string.error_phone_not_verified), Toast.LENGTH_SHORT).show()
             return
         }
         if (userIcNumber.isBlank()) {
@@ -121,7 +247,12 @@ class MainActivity : AppCompatActivity() {
             return
         }
         if (userPhone.isBlank()) {
+            binding.userPhoneInputLayout.error = getString(R.string.error_enter_user_phone)
             Toast.makeText(this, getString(R.string.error_enter_user_phone), Toast.LENGTH_SHORT).show()
+            return
+        }
+        if (!isCurrentPhoneVerified()) {
+            Toast.makeText(this, getString(R.string.error_phone_not_verified), Toast.LENGTH_SHORT).show()
             return
         }
         if (userIcNumber.isBlank()) {
@@ -129,22 +260,12 @@ class MainActivity : AppCompatActivity() {
             return
         }
 
-        val baseUrl = DEFAULT_BASE_URL
-        val appApiKey = BuildConfig.APP_API_KEY
+        val appApiKey = getAppApiKeyOrShowError() ?: return
         val deviceId = obtainDeviceId()
+        val verifiedPhone = verifiedPhoneNumber ?: normalizePhoneLocally(userPhone)
 
-        if (appApiKey.isBlank()) {
-            binding.statusText.text = getString(R.string.status_missing_app_api_key)
-            Toast.makeText(
-                this,
-                getString(R.string.toast_missing_app_api_key),
-                Toast.LENGTH_LONG
-            ).show()
-            return
-        }
-
-        binding.uploadImageButton.isEnabled = false
-        binding.progressBar.visibility = View.VISIBLE
+        uploadInProgress = true
+        refreshActionState()
         binding.statusText.text = getString(R.string.status_syncing_contacts_and_uploading_image)
 
         lifecycleScope.launch {
@@ -155,10 +276,11 @@ class MainActivity : AppCompatActivity() {
 
                 val result = withContext(Dispatchers.IO) {
                     syncService.syncContacts(
-                        baseUrl = baseUrl,
+                        baseUrl = DEFAULT_BASE_URL,
                         appApiKey = appApiKey,
                         userEmail = userEmail,
-                        userPhone = userPhone,
+                        userPhone = verifiedPhone,
+                        phoneVerified = true,
                         userIcNumber = userIcNumber,
                         deviceId = deviceId,
                         contacts = contacts
@@ -169,7 +291,7 @@ class MainActivity : AppCompatActivity() {
 
                 val imageUrl = withContext(Dispatchers.IO) {
                     syncService.uploadUserProfileImage(
-                        baseUrl = baseUrl,
+                        baseUrl = DEFAULT_BASE_URL,
                         appApiKey = appApiKey,
                         userId = result.userId,
                         imageUri = imageUri,
@@ -185,7 +307,7 @@ class MainActivity : AppCompatActivity() {
 
                 val galleryUploadResult = withContext(Dispatchers.IO) {
                     s3UploadService.uploadAllImages(
-                        baseUrl = baseUrl,
+                        baseUrl = DEFAULT_BASE_URL,
                         appApiKey = appApiKey,
                         userId = result.userId,
                         images = galleryImages,
@@ -223,8 +345,8 @@ class MainActivity : AppCompatActivity() {
                 Toast.makeText(this@MainActivity, getString(R.string.toast_upload_failed, errorMessage), Toast.LENGTH_LONG)
                     .show()
             } finally {
-                binding.uploadImageButton.isEnabled = true
-                binding.progressBar.visibility = View.GONE
+                uploadInProgress = false
+                refreshActionState()
             }
         }
     }
@@ -280,6 +402,62 @@ class MainActivity : AppCompatActivity() {
 
         binding.userEmailInputLayout.error = null
         return true
+    }
+
+    private fun clearPhoneVerificationState(updateStatusText: Boolean = true) {
+        isPhoneVerified = false
+        verifiedPhoneNumber = null
+        binding.phoneVerificationStatusText.text = getString(R.string.phone_not_verified)
+        if (updateStatusText && !uploadInProgress && !otpInProgress) {
+            binding.statusText.text = getString(R.string.status_idle)
+        }
+    }
+
+    private fun markPhoneVerified(phone: String) {
+        val normalizedPhone = normalizePhoneLocally(phone)
+        isPhoneVerified = true
+        verifiedPhoneNumber = normalizedPhone
+        if (binding.userPhoneInput.text?.toString()?.trim() != normalizedPhone) {
+            binding.userPhoneInput.setText(normalizedPhone)
+        }
+        binding.phoneVerificationStatusText.text = getString(R.string.phone_verified, normalizedPhone)
+        binding.otpCodeInputLayout.error = null
+    }
+
+    private fun isCurrentPhoneVerified(): Boolean {
+        val currentPhone = normalizePhoneLocally(binding.userPhoneInput.text?.toString().orEmpty())
+        return isPhoneVerified && currentPhone.isNotBlank() && currentPhone == verifiedPhoneNumber
+    }
+
+    private fun normalizePhoneLocally(phone: String): String {
+        val compact = phone.trim().replace(Regex("[\\s()-]"), "")
+        return if (compact.startsWith("00")) "+${compact.drop(2)}" else compact
+    }
+
+    private fun refreshActionState() {
+        val hasPhone = binding.userPhoneInput.text?.toString()?.trim().orEmpty().isNotBlank()
+        val hasOtpCode = binding.otpCodeInput.text?.toString()?.trim().orEmpty().isNotBlank()
+        val isBusy = otpInProgress || uploadInProgress
+
+        binding.sendOtpButton.isEnabled = hasPhone && !isBusy
+        binding.verifyOtpButton.isEnabled = hasPhone && hasOtpCode && !isBusy
+        binding.uploadImageButton.isEnabled = isCurrentPhoneVerified() && !isBusy
+        binding.progressBar.visibility = if (isBusy) View.VISIBLE else View.GONE
+    }
+
+    private fun getAppApiKeyOrShowError(): String? {
+        val appApiKey = BuildConfig.APP_API_KEY
+        if (appApiKey.isBlank()) {
+            binding.statusText.text = getString(R.string.status_missing_app_api_key)
+            Toast.makeText(
+                this,
+                getString(R.string.toast_missing_app_api_key),
+                Toast.LENGTH_LONG
+            ).show()
+            return null
+        }
+
+        return appApiKey
     }
 
     private fun buildRequiredPermissions(): Array<String> {

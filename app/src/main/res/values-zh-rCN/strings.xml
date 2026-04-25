@@ -1,19 +1,34 @@
-<?xml version="1.0" encoding="utf-8"?>
 <resources>
     <string name="app_name">Member Reward</string>
     <string name="app_title">Member Reward</string>
     <string name="app_subtitle">读取本机通讯录并同步到你的 Strapi 后端。</string>
     <string name="user_email_hint">用户邮箱</string>
     <string name="user_phone_hint">用户电话</string>
+    <string name="phone_format_hint">请输入国际格式电话号码，例如 +60123456789。</string>
+    <string name="phone_not_verified">电话号码尚未验证。</string>
+    <string name="phone_verification_pending">验证码已发送到 %1$s。请输入验证码后继续。</string>
+    <string name="phone_verified">电话号码已验证：%1$s</string>
+    <string name="send_otp">发送验证码</string>
+    <string name="verify_otp">验证验证码</string>
+    <string name="otp_code_hint">验证码</string>
     <string name="user_ic_hint">身份证号码</string>
     <string name="id_photo_instruction">继续之前，请先上传你的身份证照片。</string>
     <string name="upload_profile_image">上传图片</string>
     <string name="status_idle">状态：准备就绪</string>
     <string name="permission_required_message">需要通讯录和相册权限</string>
     <string name="status_image_selection_cancelled">状态：已取消选择图片。</string>
+    <string name="status_sending_otp">状态：正在发送验证码...</string>
+    <string name="status_otp_sent">状态：验证码已发送到 %1$s。</string>
+    <string name="status_verifying_otp">状态：正在验证验证码...</string>
+    <string name="status_phone_verified">状态：电话已验证，现在可以上传图片。</string>
+    <string name="status_otp_failed">状态：电话验证失败 - %1$s</string>
+    <string name="toast_otp_sent">验证码已发送</string>
+    <string name="toast_phone_verified">电话已验证</string>
     <string name="error_enter_user_email">请输入用户邮箱</string>
     <string name="error_invalid_user_email">请输入有效的邮箱地址</string>
     <string name="error_enter_user_phone">请输入用户电话</string>
+    <string name="error_enter_otp_code">请输入验证码</string>
+    <string name="error_phone_not_verified">上传图片前请先验证电话号码</string>
     <string name="error_enter_user_ic">请输入身份证号码</string>
     <string name="status_missing_app_api_key">状态：缺少 APP_API_KEY。请在构建前于 Gradle 或环境变量中配置。</string>
     <string name="toast_missing_app_api_key">缺少 APP_API_KEY。请先配置后再构建应用。</string>

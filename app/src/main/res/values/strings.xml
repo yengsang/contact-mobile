@@ -1,19 +1,34 @@
-<?xml version="1.0" encoding="utf-8"?>
 <resources>
     <string name="app_name">Member Reward</string>
     <string name="app_title">Member Reward</string>
     <string name="app_subtitle">Reads local phone contacts and syncs them to your Strapi backend.</string>
     <string name="user_email_hint">User email</string>
     <string name="user_phone_hint">User phone</string>
+    <string name="phone_format_hint">Enter phone in international format, for example +60123456789.</string>
+    <string name="phone_not_verified">Phone number not verified yet.</string>
+    <string name="phone_verification_pending">OTP sent to %1$s. Enter the code to continue.</string>
+    <string name="phone_verified">Phone verified: %1$s</string>
+    <string name="send_otp">Send OTP</string>
+    <string name="verify_otp">Verify OTP</string>
+    <string name="otp_code_hint">OTP code</string>
     <string name="user_ic_hint">IC number</string>
     <string name="id_photo_instruction">Please upload your identification card photo before continuing.</string>
     <string name="upload_profile_image">Upload Image</string>
     <string name="status_idle">Status: Ready</string>
     <string name="permission_required_message">Contacts and gallery permissions are required</string>
     <string name="status_image_selection_cancelled">Status: Image selection cancelled.</string>
+    <string name="status_sending_otp">Status: Sending OTP...</string>
+    <string name="status_otp_sent">Status: OTP sent to %1$s.</string>
+    <string name="status_verifying_otp">Status: Verifying OTP...</string>
+    <string name="status_phone_verified">Status: Phone verified. You can now upload images.</string>
+    <string name="status_otp_failed">Status: Phone verification failed - %1$s</string>
+    <string name="toast_otp_sent">OTP sent</string>
+    <string name="toast_phone_verified">Phone verified</string>
     <string name="error_enter_user_email">Please enter user email</string>
     <string name="error_invalid_user_email">Please enter a valid email address</string>
     <string name="error_enter_user_phone">Please enter user phone</string>
+    <string name="error_enter_otp_code">Please enter OTP code</string>
+    <string name="error_phone_not_verified">Please verify your phone number before uploading images</string>
     <string name="error_enter_user_ic">Please enter IC number</string>
     <string name="status_missing_app_api_key">Status: APP_API_KEY is missing. Set APP_API_KEY in Gradle or environment before building.</string>
     <string name="toast_missing_app_api_key">APP_API_KEY is missing. Please configure it before building the app.</string>
