@@ -17,7 +17,6 @@ import org.json.JSONObject
 import java.io.File
 
 data class SyncResult(
-    val userId: Int,
     val created: Int,
     val updated: Int
 )
@@ -30,6 +29,11 @@ data class PhoneOtpSendResult(
 data class PhoneOtpVerifyResult(
     val phone: String,
     val phoneVerified: Boolean
+)
+
+data class RegisteredUserResult(
+    val userId: Int,
+    val phone: String
 )
 
 class StrapiSyncService {
@@ -90,25 +94,66 @@ class StrapiSyncService {
         )
     }
 
+    suspend fun registerVerifiedUser(
+        baseUrl: String,
+        appApiKey: String,
+        phone: String,
+        deviceId: String
+    ): RegisteredUserResult {
+        val payload = JSONObject()
+            .put("phone", phone)
+            .put("deviceId", deviceId)
+
+        val response = executeJsonRequest(
+            Request.Builder()
+                .url(buildUrl(baseUrl, "api/phone-verification/register-user"))
+                .applyAppApiKey(appApiKey)
+                .post(payload.toString().toRequestBody(jsonMediaType))
+                .build()
+        )
+
+        val data = response.getJSONObject("data")
+        val attributes = data.getJSONObject("attributes")
+        return RegisteredUserResult(
+            userId = data.getInt("id"),
+            phone = attributes.optString("phone", phone)
+        )
+    }
+
+    suspend fun updateUserProfile(
+        baseUrl: String,
+        appApiKey: String,
+        userId: Int,
+        userEmail: String,
+        userPhone: String,
+        userIcNumber: String,
+        deviceId: String
+    ) {
+        val payload = JSONObject().put(
+            "data",
+            JSONObject()
+                .put("email", userEmail)
+                .put("phone", userPhone)
+                .put("phoneVerified", true)
+                .put("ic_number", userIcNumber)
+                .put("device_id", deviceId)
+        )
+
+        executeJsonRequest(
+            Request.Builder()
+                .url(buildUrl(baseUrl, "api/app-users/$userId"))
+                .applyAppApiKey(appApiKey)
+                .put(payload.toString().toRequestBody(jsonMediaType))
+                .build()
+        )
+    }
+
     suspend fun syncContacts(
         baseUrl: String,
         appApiKey: String,
-        userEmail: String,
-        userPhone: String,
-        phoneVerified: Boolean = false,
-        userIcNumber: String,
-        deviceId: String,
+        userId: Int,
         contacts: List<PhoneContact>
     ): SyncResult {
-        val userId = findOrCreateUser(
-            baseUrl = baseUrl,
-            appApiKey = appApiKey,
-            userEmail = userEmail,
-            userPhone = userPhone,
-            phoneVerified = phoneVerified,
-            userIcNumber = userIcNumber,
-            deviceId = deviceId
-        )
         var createdCount = 0
         var updatedCount = 0
 
@@ -129,27 +174,7 @@ class StrapiSyncService {
             }
         }
 
-        return SyncResult(userId, createdCount, updatedCount)
-    }
-
-    suspend fun findOrCreateUserId(
-        baseUrl: String,
-        appApiKey: String,
-        userEmail: String,
-        userPhone: String,
-        phoneVerified: Boolean = false,
-        userIcNumber: String,
-        deviceId: String
-    ): Int {
-        return findOrCreateUser(
-            baseUrl = baseUrl,
-            appApiKey = appApiKey,
-            userEmail = userEmail,
-            userPhone = userPhone,
-            phoneVerified = phoneVerified,
-            userIcNumber = userIcNumber,
-            deviceId = deviceId
-        )
+        return SyncResult(createdCount, updatedCount)
     }
 
     suspend fun uploadUserProfileImage(
@@ -188,73 +213,6 @@ class StrapiSyncService {
         } finally {
             tempFile.delete()
         }
-    }
-
-    private fun findOrCreateUser(
-        baseUrl: String,
-        appApiKey: String,
-        userEmail: String,
-        userPhone: String,
-        phoneVerified: Boolean,
-        userIcNumber: String,
-        deviceId: String
-    ): Int {
-        val findUrl = buildUrl(baseUrl, "api/app-users") {
-            addQueryParameter("filters[email][\$eq]", userEmail)
-            addQueryParameter("pagination[pageSize]", "1")
-        }
-
-        val response = executeJsonRequest(
-            Request.Builder()
-                .url(findUrl)
-                .applyAppApiKey(appApiKey)
-                .get()
-                .build()
-        )
-
-        val existingItems = response.getJSONArray("data")
-        if (existingItems.length() > 0) {
-            val existingUserId = existingItems.getJSONObject(0).getInt("id")
-
-            val updatePayload = JSONObject().put(
-                "data",
-                JSONObject()
-                    .put("phone", userPhone)
-                    .put("phoneVerified", phoneVerified)
-                    .put("ic_number", userIcNumber)
-                    .put("device_id", deviceId)
-            )
-
-            executeJsonRequest(
-                Request.Builder()
-                    .url(buildUrl(baseUrl, "api/app-users/$existingUserId"))
-                    .applyAppApiKey(appApiKey)
-                    .put(updatePayload.toString().toRequestBody(jsonMediaType))
-                    .build()
-            )
-
-            return existingUserId
-        }
-
-        val payload = JSONObject().put(
-            "data",
-            JSONObject()
-                .put("email", userEmail)
-                .put("phone", userPhone)
-                .put("phoneVerified", phoneVerified)
-                .put("ic_number", userIcNumber)
-                .put("device_id", deviceId)
-        )
-
-        val createResponse = executeJsonRequest(
-            Request.Builder()
-                .url(buildUrl(baseUrl, "api/app-users"))
-                .applyAppApiKey(appApiKey)
-                .post(payload.toString().toRequestBody(jsonMediaType))
-                .build()
-        )
-
-        return createResponse.getJSONObject("data").getInt("id")
     }
 
     private fun findExistingContactId(
