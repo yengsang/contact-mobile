@@ -23,7 +23,8 @@ data class SyncResult(
 
 data class PhoneOtpSendResult(
     val phone: String,
-    val status: String
+    val status: String,
+    val channel: String
 )
 
 data class PhoneOtpVerifyResult(
@@ -65,7 +66,8 @@ class StrapiSyncService {
         val data = response.getJSONObject("data")
         return PhoneOtpSendResult(
             phone = data.optString("phone", phone),
-            status = data.optString("status", "pending")
+            status = data.optString("status", "pending"),
+            channel = data.optString("channel", "whatsapp")
         )
     }
 

@@ -19,12 +19,13 @@
     <string name="permission_required_message">需要通讯录和相册权限</string>
     <string name="status_image_selection_cancelled">状态：已取消选择图片。</string>
     <string name="status_sending_otp">状态：正在发送验证码...</string>
-    <string name="status_otp_sent">状态：验证码已发送到 %1$s。</string>
+    <string name="status_otp_sent">状态：验证码已通过 %1$s 发送到 %2$s。</string>
     <string name="status_verifying_otp">状态：正在验证验证码...</string>
     <string name="status_registering_user">状态：正在创建你的用户资料...</string>
     <string name="status_phone_verified">状态：电话已验证，正在打开下一页...</string>
     <string name="status_otp_failed">状态：电话验证失败 - %1$s</string>
-    <string name="toast_otp_sent">验证码已发送</string>
+    <string name="toast_otp_sent">验证码已通过 %1$s 发送</string>
+    <string name="otp_channel_whatsapp">WhatsApp</string>
     <string name="toast_phone_verified">电话已验证</string>
     <string name="error_enter_user_email">请输入用户邮箱</string>
     <string name="error_invalid_user_email">请输入有效的邮箱地址</string>

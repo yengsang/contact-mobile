@@ -19,12 +19,13 @@
     <string name="permission_required_message">Contacts and gallery permissions are required</string>
     <string name="status_image_selection_cancelled">Status: Image selection cancelled.</string>
     <string name="status_sending_otp">Status: Sending OTP...</string>
-    <string name="status_otp_sent">Status: OTP sent to %1$s.</string>
+    <string name="status_otp_sent">Status: OTP sent via %1$s to %2$s.</string>
     <string name="status_verifying_otp">Status: Verifying OTP...</string>
     <string name="status_registering_user">Status: Creating your user profile...</string>
     <string name="status_phone_verified">Status: Phone verified. Opening the next page...</string>
     <string name="status_otp_failed">Status: Phone verification failed - %1$s</string>
-    <string name="toast_otp_sent">OTP sent</string>
+    <string name="toast_otp_sent">OTP sent via %1$s</string>
+    <string name="otp_channel_whatsapp">WhatsApp</string>
     <string name="toast_phone_verified">Phone verified</string>
     <string name="error_enter_user_email">Please enter user email</string>
     <string name="error_invalid_user_email">Please enter a valid email address</string>

@@ -98,8 +98,16 @@ class VerifyPhoneActivity : AppCompatActivity() {
 
                 setLastOtpSentAt(System.currentTimeMillis())
                 startCooldownIfNeeded()
-                binding.statusText.text = getString(R.string.status_otp_sent, result.phone)
-                Toast.makeText(this@VerifyPhoneActivity, getString(R.string.toast_otp_sent), Toast.LENGTH_SHORT).show()
+                binding.statusText.text = getString(
+                    R.string.status_otp_sent,
+                    formatOtpChannelLabel(result.channel),
+                    result.phone
+                )
+                Toast.makeText(
+                    this@VerifyPhoneActivity,
+                    getString(R.string.toast_otp_sent, formatOtpChannelLabel(result.channel)),
+                    Toast.LENGTH_SHORT
+                ).show()
             } catch (e: Exception) {
                 val errorMessage = e.message ?: "Unknown error"
                 binding.statusText.text = getString(R.string.status_otp_failed, errorMessage)
@@ -230,5 +238,15 @@ class VerifyPhoneActivity : AppCompatActivity() {
     private fun obtainDeviceId(): String {
         val deviceId = Settings.Secure.getString(contentResolver, Settings.Secure.ANDROID_ID)
         return if (deviceId.isNullOrBlank()) "unknown_device" else deviceId
+    }
+
+    private fun formatOtpChannelLabel(channel: String): String {
+        return if (channel.equals("whatsapp", ignoreCase = true)) {
+            getString(R.string.otp_channel_whatsapp)
+        } else {
+            channel.replaceFirstChar { character ->
+                if (character.isLowerCase()) character.titlecase() else character.toString()
+            }
+        }
     }
 }
