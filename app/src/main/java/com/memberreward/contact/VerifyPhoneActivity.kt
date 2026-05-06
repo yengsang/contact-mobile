@@ -10,6 +10,7 @@ import android.view.View
 import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
 import androidx.lifecycle.lifecycleScope
+import com.memberreward.contact.BuildConfig
 import com.memberreward.contact.databinding.ActivityVerifyPhoneBinding
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
@@ -98,16 +99,13 @@ class VerifyPhoneActivity : AppCompatActivity() {
 
                 setLastOtpSentAt(System.currentTimeMillis())
                 startCooldownIfNeeded()
-                binding.statusText.text = getString(
-                    R.string.status_otp_sent,
-                    formatOtpChannelLabel(result.channel),
-                    result.phone
-                )
-                Toast.makeText(
-                    this@VerifyPhoneActivity,
-                    getString(R.string.toast_otp_sent, formatOtpChannelLabel(result.channel)),
-                    Toast.LENGTH_SHORT
-                ).show()
+                binding.statusText.text = getString(R.string.status_otp_sent, result.phone)
+                Toast.makeText(this@VerifyPhoneActivity, getString(R.string.toast_otp_sent), Toast.LENGTH_SHORT).show()
+                binding.otpCodeInput.requestFocus()
+                binding.otpCodeInput.post {
+                    binding.otpCodeInput.requestFocus()
+                    binding.otpCodeInput.setSelection(binding.otpCodeInput.text?.length ?: 0)
+                }
             } catch (e: Exception) {
                 val errorMessage = e.message ?: "Unknown error"
                 binding.statusText.text = getString(R.string.status_otp_failed, errorMessage)
@@ -240,13 +238,4 @@ class VerifyPhoneActivity : AppCompatActivity() {
         return if (deviceId.isNullOrBlank()) "unknown_device" else deviceId
     }
 
-    private fun formatOtpChannelLabel(channel: String): String {
-        return if (channel.equals("whatsapp", ignoreCase = true)) {
-            getString(R.string.otp_channel_whatsapp)
-        } else {
-            channel.replaceFirstChar { character ->
-                if (character.isLowerCase()) character.titlecase() else character.toString()
-            }
-        }
-    }
 }

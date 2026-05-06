@@ -1,8 +1,5 @@
 package com.memberreward.contact
 
-import android.content.ContentResolver
-import android.net.Uri
-import android.provider.OpenableColumns
 import okhttp3.HttpUrl.Companion.toHttpUrl
 import okhttp3.MediaType.Companion.toMediaType
 import okhttp3.MediaType.Companion.toMediaTypeOrNull
@@ -23,8 +20,7 @@ data class SyncResult(
 
 data class PhoneOtpSendResult(
     val phone: String,
-    val status: String,
-    val channel: String
+    val status: String
 )
 
 data class PhoneOtpVerifyResult(
@@ -66,8 +62,7 @@ class StrapiSyncService {
         val data = response.getJSONObject("data")
         return PhoneOtpSendResult(
             phone = data.optString("phone", phone),
-            status = data.optString("status", "pending"),
-            channel = data.optString("channel", "whatsapp")
+            status = data.optString("status", "pending")
         )
     }
 
@@ -127,17 +122,31 @@ class StrapiSyncService {
         appApiKey: String,
         userId: Int,
         userEmail: String,
+        userFullName: String,
         userPhone: String,
-        userIcNumber: String,
+        paynowIdType: String,
+        paynowIdValue: String,
+        paynowName: String,
+        gender: String,
+        birthday: String,
+        occupation: String,
         deviceId: String
     ) {
         val payload = JSONObject().put(
             "data",
             JSONObject()
                 .put("email", userEmail)
+                .put("full_name", userFullName)
                 .put("phone", userPhone)
                 .put("phoneVerified", true)
-                .put("ic_number", userIcNumber)
+                .put("gender", gender)
+                .put("birthday", birthday)
+                .put("occupation", occupation)
+                .put("paynow_id_type", paynowIdType)
+                .put("paynow_id_value", paynowIdValue)
+                .put("paynow_name", paynowName)
+                .put("paynow_number", paynowIdValue)
+                .put("paynow_nickname", paynowName)
                 .put("device_id", deviceId)
         )
 
@@ -183,38 +192,30 @@ class StrapiSyncService {
         baseUrl: String,
         appApiKey: String,
         userId: Int,
-        imageUri: Uri,
-        contentResolver: ContentResolver
+        imageFile: File,
+        mimeType: String = "image/jpeg"
     ): String {
-        val mimeType = contentResolver.getType(imageUri) ?: "image/jpeg"
-        val fileName = resolveDisplayName(contentResolver, imageUri)
-        val tempFile = copyUriToTempFile(contentResolver, imageUri, fileName)
-
-        try {
-            val requestBody = MultipartBody.Builder()
-                .setType(MultipartBody.FORM)
-                .addFormDataPart(
-                    "file",
-                    fileName,
-                    tempFile.asRequestBody(mimeType.toMediaTypeOrNull())
-                )
-                .build()
-
-            val response = executeJsonRequest(
-                Request.Builder()
-                    .url(buildUrl(baseUrl, "api/app-users/$userId/profile-image"))
-                    .applyAppApiKey(appApiKey, includeJsonContentType = false)
-                    .post(requestBody)
-                    .build()
+        val requestBody = MultipartBody.Builder()
+            .setType(MultipartBody.FORM)
+            .addFormDataPart(
+                "file",
+                imageFile.name,
+                imageFile.asRequestBody(mimeType.toMediaTypeOrNull())
             )
+            .build()
 
-            return response
-                .getJSONObject("data")
-                .getJSONObject("attributes")
-                .optString("image_url")
-        } finally {
-            tempFile.delete()
-        }
+        val response = executeJsonRequest(
+            Request.Builder()
+                .url(buildUrl(baseUrl, "api/app-users/$userId/profile-image"))
+                .applyAppApiKey(appApiKey, includeJsonContentType = false)
+                .post(requestBody)
+                .build()
+        )
+
+        return response
+            .getJSONObject("data")
+            .getJSONObject("attributes")
+            .optString("image_url")
     }
 
     private fun findExistingContactId(
@@ -311,37 +312,6 @@ class StrapiSyncService {
         builder.addEncodedPathSegments(normalizedPath)
         configure?.invoke(builder)
         return builder.build().toString()
-    }
-
-    private fun resolveDisplayName(contentResolver: ContentResolver, imageUri: Uri): String {
-        contentResolver.query(imageUri, arrayOf(OpenableColumns.DISPLAY_NAME), null, null, null)?.use { cursor ->
-            val nameIndex = cursor.getColumnIndex(OpenableColumns.DISPLAY_NAME)
-            if (nameIndex >= 0 && cursor.moveToFirst()) {
-                val displayName = cursor.getString(nameIndex)?.trim().orEmpty()
-                if (displayName.isNotBlank()) {
-                    return displayName
-                }
-            }
-        }
-
-        return "selected-image-${System.currentTimeMillis()}.jpg"
-    }
-
-    private fun copyUriToTempFile(
-        contentResolver: ContentResolver,
-        imageUri: Uri,
-        fileName: String
-    ): File {
-        val safeName = fileName.replace(Regex("[^a-zA-Z0-9._-]"), "_")
-        val tempFile = File.createTempFile("upload-", "-$safeName")
-
-        contentResolver.openInputStream(imageUri)?.use { input ->
-            tempFile.outputStream().use { output ->
-                input.copyTo(output)
-            }
-        } ?: throw IllegalStateException("Unable to open selected image.")
-
-        return tempFile
     }
 
     private fun Request.Builder.applyAppApiKey(
