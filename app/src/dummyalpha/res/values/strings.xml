@@ -1,0 +1,5 @@
+<resources>
+    <string name="app_name">Dummy Alpha Rewards</string>
+    <string name="app_title">Dummy Alpha Rewards</string>
+    <string name="app_subtitle">Dummy Alpha tenant build for testing multi-tenant behavior.</string>
+</resources>

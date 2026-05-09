@@ -1,0 +1,5 @@
+<resources>
+    <string name="app_name">__APP_NAME__</string>
+    <string name="app_title">__APP_NAME__</string>
+    <string name="app_subtitle">__APP_SUBTITLE__</string>
+</resources>
