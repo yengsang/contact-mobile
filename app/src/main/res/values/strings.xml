@@ -2,11 +2,13 @@
     <string name="app_name">Member Reward</string>
     <string name="app_title">Member Reward</string>
     <string name="app_subtitle">Reads local phone contacts and syncs them to your Strapi backend.</string>
+    <string name="brand_logo_content_description">Tenant logo</string>
     <string name="verify_phone_title">Phone Verification</string>
     <string name="verify_phone_intro">Verify your phone number first. After verification, we will create your user profile and continue to the next page.</string>
     <string name="user_email_hint">Email</string>
     <string name="user_full_name_hint">Full Name</string>
-    <string name="user_phone_hint">User phone</string>
+    <string name="user_phone_hint">Phone Number</string>
+    <string name="user_id_hint">User ID</string>
     <string name="phone_format_hint">Enter phone in international format, for example +60123456789.</string>
     <string name="send_otp_ready">You can request an OTP now.</string>
     <string name="send_otp_cooldown">You can request another OTP in %1$dm %2$ds.</string>
@@ -38,6 +40,7 @@
     <string name="status_otp_failed">Status: Phone verification failed - %1$s</string>
     <string name="toast_otp_sent">OTP sent</string>
     <string name="toast_phone_verified">Phone verified</string>
+    <string name="error_enter_user_id">Please enter user ID</string>
     <string name="error_enter_user_email">Please enter email</string>
     <string name="error_enter_full_name">Please enter full name</string>
     <string name="error_invalid_user_email">Please enter a valid email address</string>

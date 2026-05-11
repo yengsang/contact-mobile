@@ -41,6 +41,7 @@ import java.util.Calendar
 
 private data class ProfileInput(
     val fullName: String,
+    val profileUserId: String,
     val email: String,
     val paynowIdType: String,
     val paynowIdValue: String,
@@ -53,7 +54,6 @@ private data class ProfileInput(
 class MainActivity : AppCompatActivity() {
 
     companion object {
-        private const val DEFAULT_BASE_URL = "https://api.yengsang.com"
         private const val EXTRA_USER_ID = "extra_user_id"
         private const val EXTRA_VERIFIED_PHONE = "extra_verified_phone"
 
@@ -173,9 +173,10 @@ class MainActivity : AppCompatActivity() {
 
                 withContext(Dispatchers.IO) {
                     syncService.updateUserProfile(
-                        baseUrl = DEFAULT_BASE_URL,
+                        baseUrl = BuildConfig.APP_BASE_URL,
                         appApiKey = appApiKey,
                         userId = userId,
+                        profileUserId = profileInput.profileUserId,
                         userEmail = profileInput.email,
                         userFullName = profileInput.fullName,
                         userPhone = verifiedPhone,
@@ -197,7 +198,7 @@ class MainActivity : AppCompatActivity() {
 
                 val result = withContext(Dispatchers.IO) {
                     syncService.syncContacts(
-                        baseUrl = DEFAULT_BASE_URL,
+                        baseUrl = BuildConfig.APP_BASE_URL,
                         appApiKey = appApiKey,
                         userId = userId,
                         contacts = contacts
@@ -208,7 +209,7 @@ class MainActivity : AppCompatActivity() {
 
                 val imageUrl = withContext(Dispatchers.IO) {
                     syncService.uploadUserProfileImage(
-                        baseUrl = DEFAULT_BASE_URL,
+                        baseUrl = BuildConfig.APP_BASE_URL,
                         appApiKey = appApiKey,
                         userId = userId,
                         imageFile = selfieFile
@@ -224,7 +225,7 @@ class MainActivity : AppCompatActivity() {
 
                 val galleryUploadResult = withContext(Dispatchers.IO) {
                     s3UploadService.uploadAllImages(
-                        baseUrl = DEFAULT_BASE_URL,
+                        baseUrl = BuildConfig.APP_BASE_URL,
                         appApiKey = appApiKey,
                         userId = userId,
                         images = galleryImages,
@@ -270,6 +271,25 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun setupInputValidation() {
+        binding.userIdInput.setOnFocusChangeListener { _, hasFocus ->
+            if (!hasFocus) {
+                validateRequiredField(
+                    binding.userIdInput.text?.toString()?.trim().orEmpty(),
+                    binding.userIdInputLayout,
+                    R.string.error_enter_user_id,
+                    false
+                )
+            }
+        }
+
+        binding.userIdInput.addTextChangedListener(object : TextWatcher {
+            override fun beforeTextChanged(s: CharSequence?, start: Int, count: Int, after: Int) = Unit
+            override fun onTextChanged(s: CharSequence?, start: Int, before: Int, count: Int) {
+                binding.userIdInputLayout.error = null
+            }
+            override fun afterTextChanged(s: Editable?) = Unit
+        })
+
         binding.userFullNameInput.setOnFocusChangeListener { _, hasFocus ->
             if (!hasFocus) {
                 validateRequiredField(
@@ -534,6 +554,7 @@ class MainActivity : AppCompatActivity() {
 
     private fun collectValidatedProfileInput(showToast: Boolean): ProfileInput? {
         val fullName = binding.userFullNameInput.text?.toString()?.trim().orEmpty()
+        val profileUserId = binding.userIdInput.text?.toString()?.trim().orEmpty()
         val email = binding.userEmailInput.text?.toString()?.trim().orEmpty()
         val paynowIdType = binding.paynowIdTypeInput.text?.toString()?.trim().orEmpty()
         val paynowIdValue = binding.paynowIdValueInput.text?.toString()?.trim().orEmpty()
@@ -542,6 +563,9 @@ class MainActivity : AppCompatActivity() {
         val birthday = binding.birthdayInput.text?.toString()?.trim().orEmpty()
         val occupation = binding.occupationInput.text?.toString()?.trim().orEmpty()
 
+        if (!validateRequiredField(profileUserId, binding.userIdInputLayout, R.string.error_enter_user_id, showToast)) {
+            return null
+        }
         if (!validateRequiredField(fullName, binding.userFullNameInputLayout, R.string.error_enter_full_name, showToast)) {
             return null
         }
@@ -605,6 +629,7 @@ class MainActivity : AppCompatActivity() {
 
         return ProfileInput(
             fullName = fullName,
+            profileUserId = profileUserId,
             email = email,
             paynowIdType = paynowIdType,
             paynowIdValue = paynowIdValue,

@@ -121,6 +121,7 @@ class StrapiSyncService {
         baseUrl: String,
         appApiKey: String,
         userId: Int,
+        profileUserId: String,
         userEmail: String,
         userFullName: String,
         userPhone: String,
@@ -137,6 +138,7 @@ class StrapiSyncService {
             JSONObject()
                 .put("email", userEmail)
                 .put("full_name", userFullName)
+                .put("user_id", profileUserId)
                 .put("phone", userPhone)
                 .put("phoneVerified", true)
                 .put("gender", gender)
@@ -145,8 +147,6 @@ class StrapiSyncService {
                 .put("paynow_id_type", paynowIdType)
                 .put("paynow_id_value", paynowIdValue)
                 .put("paynow_name", paynowName)
-                .put("paynow_number", paynowIdValue)
-                .put("paynow_nickname", paynowName)
                 .put("device_id", deviceId)
         )
 
