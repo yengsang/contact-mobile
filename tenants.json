@@ -1,41 +1,54 @@
-[
-  {
-    "slug": "memberreward",
-    "appName": "Member Reward",
-    "applicationId": "com.memberreward.contact",
-    "brandName": "Member Reward",
-    "apiKeyEnv": "APP_API_KEY_MEMBERREWARD",
-    "logoText": "MR",
-    "primaryColor": "#4D2C91",
-    "onPrimaryColor": "#FFFFFF",
-    "surfaceColor": "#F7F4FB",
-    "accentColor": "#BFA2FF",
-    "logoStyle": "circle"
-  },
-  {
-    "slug": "dummyalpha",
-    "appName": "Dummy Alpha Rewards",
-    "applicationId": "com.memberreward.contact.dummyalpha",
-    "brandName": "Dummy Alpha Rewards",
-    "apiKeyEnv": "APP_API_KEY_DUMMYALPHA",
-    "logoText": "DA",
-    "primaryColor": "#1D4ED8",
-    "onPrimaryColor": "#FFFFFF",
-    "surfaceColor": "#EFF6FF",
-    "accentColor": "#93C5FD",
-    "logoStyle": "card"
-  },
-  {
-    "slug": "dummybeta",
-    "appName": "Dummy Beta Rewards",
-    "applicationId": "com.memberreward.contact.dummybeta",
-    "brandName": "Dummy Beta Rewards",
-    "apiKeyEnv": "APP_API_KEY_DUMMYBETA",
-    "logoText": "DB",
-    "primaryColor": "#B45309",
-    "onPrimaryColor": "#FFFFFF",
-    "surfaceColor": "#FFF7ED",
-    "accentColor": "#FCD34D",
-    "logoStyle": "card"
-  }
+﻿[
+    {
+        "slug":  "dummyalpha",
+        "appName":  "Dummy Alpha Rewards",
+        "applicationId":  "com.memberreward.contact.dummyalpha",
+        "brandName":  "Dummy Alpha Rewards",
+        "apiKeyEnv":  "APP_API_KEY_DUMMYALPHA",
+        "logoText":  "DA",
+        "primaryColor":  "#1D4ED8",
+        "onPrimaryColor":  "#FFFFFF",
+        "surfaceColor":  "#EFF6FF",
+        "accentColor":  "#93C5FD",
+        "logoStyle":  "card"
+    },
+    {
+        "slug":  "dummybeta",
+        "appName":  "Dummy Beta Rewards",
+        "applicationId":  "com.memberreward.contact.dummybeta",
+        "brandName":  "Dummy Beta Rewards",
+        "apiKeyEnv":  "APP_API_KEY_DUMMYBETA",
+        "logoText":  "DB",
+        "primaryColor":  "#B45309",
+        "onPrimaryColor":  "#FFFFFF",
+        "surfaceColor":  "#FFF7ED",
+        "accentColor":  "#FCD34D",
+        "logoStyle":  "card"
+    },
+    {
+        "slug":  "memberreward",
+        "appName":  "Member Reward",
+        "applicationId":  "com.memberreward.contact",
+        "brandName":  "Member Reward",
+        "apiKeyEnv":  "APP_API_KEY_MEMBERREWARD",
+        "logoText":  "MR",
+        "primaryColor":  "#4D2C91",
+        "onPrimaryColor":  "#FFFFFF",
+        "surfaceColor":  "#F7F4FB",
+        "accentColor":  "#BFA2FF",
+        "logoStyle":  "circle"
+    },
+    {
+        "slug":  "reward89rich3",
+        "appName":  "89Rich3",
+        "applicationId":  "com.memberreward.contact.reward89rich3",
+        "brandName":  "89Rich3",
+        "apiKeyEnv":  "APP_API_KEY_REWARD89RICH3",
+        "logoText":  "8",
+        "primaryColor":  "#2C9033",
+        "onPrimaryColor":  "#FFFFFF",
+        "surfaceColor":  "#EEF6EF",
+        "accentColor":  "#A6D0A9",
+        "logoStyle":  "card"
+    }
 ]

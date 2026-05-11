@@ -6,7 +6,8 @@
     <string name="verify_phone_intro">请先验证你的电话号码。验证成功后，我们会创建你的用户资料并进入下一页。</string>
     <string name="user_email_hint">邮箱</string>
     <string name="user_full_name_hint">全名</string>
-    <string name="user_phone_hint">用户电话</string>
+    <string name="user_phone_hint">电话号码</string>
+    <string name="user_id_hint">用户编号</string>
     <string name="phone_format_hint">请输入国际格式电话号码，例如 +60123456789。</string>
     <string name="send_otp_ready">你现在可以请求验证码。</string>
     <string name="send_otp_cooldown">你可以在 %1$d 分 %2$d 秒后再次请求验证码。</string>

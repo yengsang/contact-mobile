@@ -33,6 +33,12 @@ fun toKebabUpperSlug(slug: String): String = slug
 fun stringValue(source: Map<String, Any?>, key: String): String =
     source[key]?.toString()?.trim().orEmpty()
 
+fun isValidAndroidApplicationId(value: String): Boolean {
+    val segments = value.split('.')
+    if (segments.size < 2) return false
+    return segments.all { segment -> segment.matches(Regex("[a-z][a-z0-9_]*")) }
+}
+
 data class TenantFlavor(
     val slug: String,
     val appName: String,
@@ -50,6 +56,9 @@ val tenantFlavors = tenantsConfig.map { entry ->
 
     val applicationId = stringValue(entry, "applicationId")
     require(applicationId.isNotBlank()) { "Tenant '$slug' must include applicationId in tenants.json." }
+    require(isValidAndroidApplicationId(applicationId)) {
+        "Tenant '$slug' has invalid applicationId '$applicationId'. Use a lowercase Android package name like com.memberreward.contact.$slug."
+    }
 
     val brandName = stringValue(entry, "brandName").ifBlank { appName }
     val apiKeyEnv = stringValue(entry, "apiKeyEnv").ifBlank { "APP_API_KEY_${toKebabUpperSlug(slug)}" }
@@ -103,6 +112,7 @@ android {
                 getDefaultProguardFile("proguard-android-optimize.txt"),
                 "proguard-rules.pro"
             )
+            signingConfig = signingConfigs.getByName("debug")
         }
     }
 

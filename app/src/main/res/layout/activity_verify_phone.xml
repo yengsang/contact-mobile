@@ -19,14 +19,24 @@
         android:id="@+id/contentContainer"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
+        android:gravity="center_horizontal"
         android:orientation="vertical"
         android:padding="16dp"
         app:layout_constraintTop_toBottomOf="@id/toolbar">
+
+        <ImageView
+            android:id="@+id/brandLogoImage"
+            android:layout_width="88dp"
+            android:layout_height="88dp"
+            android:contentDescription="@string/brand_logo_content_description"
+            android:scaleType="fitCenter"
+            android:src="@drawable/tenant_brand_mark" />
 
         <TextView
             android:id="@+id/verifyPhoneIntroText"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
+            android:layout_marginTop="12dp"
             android:text="@string/verify_phone_intro"
             android:textAppearance="?attr/textAppearanceBodyMedium" />
 

@@ -63,7 +63,39 @@ function Normalize-OptionalHexColor {
 function Convert-ToEnvName {
     param([string]$Value)
 
-    return (($Value -replace '([a-z0-9])([A-Z])', '$1_$2') -replace '[^A-Za-z0-9]+', '_').ToUpperInvariant()
+    $rawValue = if ($null -eq $Value) { "" } else { [string]$Value }
+    $sanitized = [Regex]::Replace($rawValue.Trim(), '[^A-Za-z0-9]+', '_').Trim('_')
+    if (-not $sanitized) {
+        throw "Cannot derive an environment variable name from '$Value'."
+    }
+
+    return $sanitized.ToUpperInvariant()
+}
+
+function Normalize-ApplicationId {
+    param([string]$Value)
+
+    $trimmed = if ($null -eq $Value) { "" } else { $Value.Trim() }
+    if (-not $trimmed) {
+        throw "ApplicationId cannot be empty."
+    }
+
+    $segments = $trimmed -split '\.'
+    if ($segments.Count -lt 2) {
+        throw "ApplicationId '$Value' is invalid. Use a full Android package name like com.memberreward.contact.reward89rich3."
+    }
+
+    foreach ($segment in $segments) {
+        if (-not $segment) {
+            throw "ApplicationId '$Value' is invalid. It cannot contain empty package segments."
+        }
+
+        if ($segment -notmatch '^[a-z][a-z0-9_]*$') {
+            throw "ApplicationId '$Value' is invalid. Each package segment must start with a lowercase letter and contain only lowercase letters, numbers, or underscores."
+        }
+    }
+
+    return ($segments -join '.')
 }
 
 function Convert-HexToRgb {
@@ -170,6 +202,34 @@ function Copy-OrTemplateAsset {
     Set-Content -LiteralPath $DestinationPath -Value $content -NoNewline
 }
 
+function Read-TenantsConfig {
+    param([string]$Path)
+
+    try {
+        $parsed = Get-Content -LiteralPath $Path -Raw | ConvertFrom-Json
+    } catch {
+        throw "The tenants config at '$Path' is not valid JSON. Repair tenants.json or restore it from git, then rerun add-tenant.ps1. Original error: $($_.Exception.Message)"
+    }
+
+    if ($null -eq $parsed) {
+        return @()
+    }
+
+    return @($parsed)
+}
+
+function Write-TenantsConfig {
+    param(
+        [string]$Path,
+        [object[]]$Tenants
+    )
+
+    $tempPath = "$Path.tmp"
+    $json = $Tenants | ConvertTo-Json -Depth 5
+    Set-Content -LiteralPath $tempPath -Value $json -Encoding utf8
+    Move-Item -LiteralPath $tempPath -Destination $Path -Force
+}
+
 $projectRoot = Split-Path -Parent $PSScriptRoot
 $templatesRoot = Join-Path $PSScriptRoot "templates\tenant"
 $tenantsJsonPath = Join-Path $projectRoot "tenants.json"
@@ -181,6 +241,7 @@ if ($normalizedSlug -notmatch '^[a-z][a-z0-9]*$') {
 }
 
 $BrandName = if ($BrandName) { $BrandName.Trim() } else { $AppName.Trim() }
+$ApplicationId = Normalize-ApplicationId $ApplicationId
 $ApiKeyEnv = if ($ApiKeyEnv) { $ApiKeyEnv.Trim() } else { "APP_API_KEY_$(Convert-ToEnvName $normalizedSlug)" }
 $LogoText = if ($LogoText) { $LogoText.Trim() } else { (($AppName -split '\s+' | Where-Object { $_ }) | ForEach-Object { $_.Substring(0,1) } | Select-Object -First 2) -join '' }
 $AppSubtitle = if ($AppSubtitle) { $AppSubtitle.Trim() } else { "$AppName tenant build." }
@@ -207,10 +268,7 @@ if (-not (Test-Path -LiteralPath $tenantsJsonPath)) {
     throw "Cannot find tenants.json at $tenantsJsonPath"
 }
 
-$tenants = Get-Content -LiteralPath $tenantsJsonPath -Raw | ConvertFrom-Json
-if ($null -eq $tenants) {
-    $tenants = @()
-}
+$tenants = Read-TenantsConfig -Path $tenantsJsonPath
 
 $existing = $tenants | Where-Object { $_.slug -eq $normalizedSlug }
 if ($existing -and -not $Force) {
@@ -237,7 +295,7 @@ if ($existing) {
 
 $tenants = @($tenants) + ([pscustomobject]$tenantEntry)
 $tenants = $tenants | Sort-Object slug
-$tenants | ConvertTo-Json -Depth 5 | Set-Content -LiteralPath $tenantsJsonPath
+Write-TenantsConfig -Path $tenantsJsonPath -Tenants $tenants
 
 $flavorRoot = Join-Path $appSrcRoot $normalizedSlug
 $resValuesDir = Join-Path $flavorRoot "res\values"

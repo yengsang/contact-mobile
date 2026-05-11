@@ -38,8 +38,8 @@
                 android:layout_width="72dp"
                 android:layout_height="72dp"
                 android:contentDescription="@string/brand_logo_content_description"
-                android:src="@drawable/tenant_brand_mark"
-                app:tint="?attr/colorPrimary" />
+                android:scaleType="fitCenter"
+                android:src="@drawable/tenant_brand_mark" />
 
             <com.google.android.material.textfield.TextInputLayout
                 android:id="@+id/userPhoneInputLayout"

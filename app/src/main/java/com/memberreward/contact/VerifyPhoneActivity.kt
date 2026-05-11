@@ -19,7 +19,6 @@ import kotlinx.coroutines.withContext
 class VerifyPhoneActivity : AppCompatActivity() {
 
     companion object {
-        private const val DEFAULT_BASE_URL = "https://api.yengsang.com"
         private const val OTP_COOLDOWN_MS = 5 * 60 * 1000L
         private const val PREFS_NAME = "member_reward_verification"
         private const val KEY_LAST_OTP_SENT_AT = "last_otp_sent_at"
@@ -91,7 +90,7 @@ class VerifyPhoneActivity : AppCompatActivity() {
             try {
                 val result = withContext(Dispatchers.IO) {
                     syncService.sendPhoneOtp(
-                        baseUrl = DEFAULT_BASE_URL,
+                        baseUrl = BuildConfig.APP_BASE_URL,
                         appApiKey = appApiKey,
                         phone = phone
                     )
@@ -141,7 +140,7 @@ class VerifyPhoneActivity : AppCompatActivity() {
             try {
                 val verified = withContext(Dispatchers.IO) {
                     syncService.verifyPhoneOtp(
-                        baseUrl = DEFAULT_BASE_URL,
+                        baseUrl = BuildConfig.APP_BASE_URL,
                         appApiKey = appApiKey,
                         phone = phone,
                         code = code
@@ -152,7 +151,7 @@ class VerifyPhoneActivity : AppCompatActivity() {
 
                 val registered = withContext(Dispatchers.IO) {
                     syncService.registerVerifiedUser(
-                        baseUrl = DEFAULT_BASE_URL,
+                        baseUrl = BuildConfig.APP_BASE_URL,
                         appApiKey = appApiKey,
                         phone = verified.phone,
                         deviceId = deviceId
