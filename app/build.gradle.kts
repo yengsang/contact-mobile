@@ -45,6 +45,7 @@ data class TenantFlavor(
     val applicationId: String,
     val brandName: String,
     val apiKeyEnv: String,
+    val deepLinkScheme: String,
 )
 
 val tenantFlavors = tenantsConfig.map { entry ->
@@ -62,6 +63,7 @@ val tenantFlavors = tenantsConfig.map { entry ->
 
     val brandName = stringValue(entry, "brandName").ifBlank { appName }
     val apiKeyEnv = stringValue(entry, "apiKeyEnv").ifBlank { "APP_API_KEY_${toKebabUpperSlug(slug)}" }
+    val deepLinkScheme = stringValue(entry, "deepLinkScheme").ifBlank { slug }
 
     TenantFlavor(
         slug = slug,
@@ -69,6 +71,7 @@ val tenantFlavors = tenantsConfig.map { entry ->
         applicationId = applicationId,
         brandName = brandName,
         apiKeyEnv = apiKeyEnv,
+        deepLinkScheme = deepLinkScheme,
     )
 }
 
@@ -101,6 +104,8 @@ android {
                 buildConfigField("String", "APP_BASE_URL", "\"$defaultBaseUrl\"")
                 buildConfigField("String", "TENANT_SLUG", "\"${tenant.slug}\"")
                 buildConfigField("String", "BRAND_NAME", "\"${tenant.brandName.replace("\"", "\\\"")}\"")
+                buildConfigField("String", "DEEP_LINK_SCHEME", "\"${tenant.deepLinkScheme.replace("\"", "\\\"")}\"")
+                manifestPlaceholders["deepLinkScheme"] = tenant.deepLinkScheme
             }
         }
     }

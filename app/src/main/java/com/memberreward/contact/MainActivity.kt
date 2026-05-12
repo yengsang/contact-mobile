@@ -56,11 +56,43 @@ class MainActivity : AppCompatActivity() {
     companion object {
         private const val EXTRA_USER_ID = "extra_user_id"
         private const val EXTRA_VERIFIED_PHONE = "extra_verified_phone"
+        private const val EXTRA_TENANT_CODE = "extra_tenant_code"
+        private const val EXTRA_REFERRAL_CODE = "extra_referral_code"
 
-        fun createIntent(context: Context, userId: Int, verifiedPhone: String): Intent {
+        private data class LaunchContext(
+            val tenantCode: String,
+            val referralCode: String
+        )
+
+        private fun parseLaunchContext(intent: Intent?): LaunchContext {
+            val data = intent?.data
+            val tenantCode = data?.getQueryParameter("tenantCode")
+                ?.trim()
+                .orEmpty()
+                .ifBlank { intent?.getStringExtra(EXTRA_TENANT_CODE).orEmpty().trim() }
+            val referralCode = data?.getQueryParameter("referralCode")
+                ?.trim()
+                .orEmpty()
+                .ifBlank { intent?.getStringExtra(EXTRA_REFERRAL_CODE).orEmpty().trim() }
+
+            return LaunchContext(
+                tenantCode = tenantCode,
+                referralCode = referralCode
+            )
+        }
+
+        fun createIntent(
+            context: Context,
+            userId: Int,
+            verifiedPhone: String,
+            tenantCode: String = "",
+            referralCode: String = ""
+        ): Intent {
             return Intent(context, MainActivity::class.java)
                 .putExtra(EXTRA_USER_ID, userId)
                 .putExtra(EXTRA_VERIFIED_PHONE, verifiedPhone)
+                .putExtra(EXTRA_TENANT_CODE, tenantCode)
+                .putExtra(EXTRA_REFERRAL_CODE, referralCode)
         }
     }
 
@@ -102,11 +134,25 @@ class MainActivity : AppCompatActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
+        val launchContext = parseLaunchContext(intent)
         userId = intent.getIntExtra(EXTRA_USER_ID, -1)
         verifiedPhone = intent.getStringExtra(EXTRA_VERIFIED_PHONE).orEmpty()
         if (userId <= 0 || verifiedPhone.isBlank()) {
-            Toast.makeText(this, getString(R.string.error_missing_verified_user), Toast.LENGTH_LONG).show()
-            startActivity(Intent(this, VerifyPhoneActivity::class.java))
+            if (intent?.data != null) {
+                Log.d(
+                    "MainActivity",
+                    "Opening deep link with scheme=${intent.data?.scheme}, tenantCode=${launchContext.tenantCode}, referralCode=${launchContext.referralCode}"
+                )
+            } else {
+                Toast.makeText(this, getString(R.string.error_missing_verified_user), Toast.LENGTH_LONG).show()
+            }
+            startActivity(
+                VerifyPhoneActivity.createIntent(
+                    context = this,
+                    tenantCode = launchContext.tenantCode,
+                    referralCode = launchContext.referralCode
+                )
+            )
             finish()
             return
         }

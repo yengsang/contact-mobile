@@ -11,6 +11,7 @@ param(
 
     [string]$BrandName,
     [string]$ApiKeyEnv,
+    [string]$DeepLinkScheme,
     [string]$LogoText,
     [string]$PrimaryColor = "#4D2C91",
     [string]$OnPrimaryColor,
@@ -243,6 +244,10 @@ if ($normalizedSlug -notmatch '^[a-z][a-z0-9]*$') {
 $BrandName = if ($BrandName) { $BrandName.Trim() } else { $AppName.Trim() }
 $ApplicationId = Normalize-ApplicationId $ApplicationId
 $ApiKeyEnv = if ($ApiKeyEnv) { $ApiKeyEnv.Trim() } else { "APP_API_KEY_$(Convert-ToEnvName $normalizedSlug)" }
+$DeepLinkScheme = if ($DeepLinkScheme) { $DeepLinkScheme.Trim().ToLowerInvariant() } else { $normalizedSlug }
+if ($DeepLinkScheme -notmatch '^[a-z][a-z0-9+.-]*$') {
+    throw "DeepLinkScheme must start with a letter and contain only lowercase letters, numbers, '+', '.', or '-'."
+}
 $LogoText = if ($LogoText) { $LogoText.Trim() } else { (($AppName -split '\s+' | Where-Object { $_ }) | ForEach-Object { $_.Substring(0,1) } | Select-Object -First 2) -join '' }
 $AppSubtitle = if ($AppSubtitle) { $AppSubtitle.Trim() } else { "$AppName tenant build." }
 
@@ -281,6 +286,7 @@ $tenantEntry = [ordered]@{
     applicationId = $ApplicationId.Trim()
     brandName = $BrandName
     apiKeyEnv = $ApiKeyEnv
+    deepLinkScheme = $DeepLinkScheme
     logoText = $LogoText
     primaryColor = $PrimaryColor
     onPrimaryColor = $OnPrimaryColor

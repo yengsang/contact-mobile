@@ -22,15 +22,29 @@ class VerifyPhoneActivity : AppCompatActivity() {
         private const val OTP_COOLDOWN_MS = 5 * 60 * 1000L
         private const val PREFS_NAME = "member_reward_verification"
         private const val KEY_LAST_OTP_SENT_AT = "last_otp_sent_at"
+        private const val EXTRA_TENANT_CODE = "extra_tenant_code"
+        private const val EXTRA_REFERRAL_CODE = "extra_referral_code"
+
+        fun createIntent(
+            context: Context,
+            tenantCode: String = "",
+            referralCode: String = ""
+        ) = android.content.Intent(context, VerifyPhoneActivity::class.java)
+            .putExtra(EXTRA_TENANT_CODE, tenantCode)
+            .putExtra(EXTRA_REFERRAL_CODE, referralCode)
     }
 
     private lateinit var binding: ActivityVerifyPhoneBinding
     private val syncService = StrapiSyncService()
     private var countdownTimer: CountDownTimer? = null
     private var busy = false
+    private var tenantCode: String = ""
+    private var referralCode: String = ""
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        tenantCode = intent.getStringExtra(EXTRA_TENANT_CODE).orEmpty().trim()
+        referralCode = intent.getStringExtra(EXTRA_REFERRAL_CODE).orEmpty().trim()
         binding = ActivityVerifyPhoneBinding.inflate(layoutInflater)
         setContentView(binding.root)
 
@@ -160,7 +174,15 @@ class VerifyPhoneActivity : AppCompatActivity() {
 
                 binding.statusText.text = getString(R.string.status_phone_verified)
                 Toast.makeText(this@VerifyPhoneActivity, getString(R.string.toast_phone_verified), Toast.LENGTH_SHORT).show()
-                startActivity(MainActivity.createIntent(this@VerifyPhoneActivity, registered.userId, registered.phone))
+                startActivity(
+                    MainActivity.createIntent(
+                        context = this@VerifyPhoneActivity,
+                        userId = registered.userId,
+                        verifiedPhone = registered.phone,
+                        tenantCode = tenantCode,
+                        referralCode = referralCode
+                    )
+                )
                 finish()
             } catch (e: Exception) {
                 val errorMessage = e.message ?: "Unknown error"
