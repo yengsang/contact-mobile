@@ -50,5 +50,18 @@
         "surfaceColor":  "#EEF6EF",
         "accentColor":  "#A6D0A9",
         "logoStyle":  "card"
+    },
+    {
+        "slug":  "reward89rich4",
+        "appName":  "89Rich4",
+        "applicationId":  "com.memberreward.contact.reward89rich4",
+        "brandName":  "89Rich4",
+        "apiKeyEnv":  "APP_API_KEY_REWARD89RICH4",
+        "logoText":  "8",
+        "primaryColor":  "#F41FCD",
+        "onPrimaryColor":  "#FFFFFF",
+        "surfaceColor":  "#FEEDFB",
+        "accentColor":  "#FAA1EA",
+        "logoStyle":  "card"
     }
 ]
