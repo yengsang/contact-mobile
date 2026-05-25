@@ -53,8 +53,9 @@
     <string name="error_select_gender">Please select gender</string>
     <string name="error_enter_birthday">Please enter birthday</string>
     <string name="error_enter_occupation">Please enter occupation</string>
-    <string name="status_missing_app_api_key">Status: APP_API_KEY is missing. Set APP_API_KEY in Gradle or environment before building.</string>
-    <string name="toast_missing_app_api_key">APP_API_KEY is missing. Please configure it before building the app.</string>
+    <string name="status_missing_tenant_qr">Status: No tenant QR selection found. Please open the app from your tenant QR link.</string>
+    <string name="toast_missing_tenant_qr">No tenant QR selection found. Please open the app from your tenant QR link.</string>
+    <string name="status_tenant_selected">Status: Tenant selected - %1$s.</string>
     <string name="status_updating_profile">Status: Saving your profile...</string>
     <string name="status_syncing_contacts_and_uploading_selfie">Status: Syncing contacts and uploading selfie...</string>
     <string name="status_contacts_synced_uploading_selfie">Status: Contacts synced. Uploading selfie...</string>

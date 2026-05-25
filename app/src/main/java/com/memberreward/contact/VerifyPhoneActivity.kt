@@ -22,29 +22,44 @@ class VerifyPhoneActivity : AppCompatActivity() {
         private const val OTP_COOLDOWN_MS = 5 * 60 * 1000L
         private const val PREFS_NAME = "member_reward_verification"
         private const val KEY_LAST_OTP_SENT_AT = "last_otp_sent_at"
+        private const val EXTRA_QR_TOKEN = "extra_qr_token"
         private const val EXTRA_TENANT_CODE = "extra_tenant_code"
         private const val EXTRA_REFERRAL_CODE = "extra_referral_code"
 
         fun createIntent(
             context: Context,
+            qrToken: String = "",
             tenantCode: String = "",
             referralCode: String = ""
         ) = android.content.Intent(context, VerifyPhoneActivity::class.java)
+            .putExtra(EXTRA_QR_TOKEN, qrToken)
             .putExtra(EXTRA_TENANT_CODE, tenantCode)
             .putExtra(EXTRA_REFERRAL_CODE, referralCode)
     }
 
     private lateinit var binding: ActivityVerifyPhoneBinding
+    private lateinit var tenantLaunchManager: TenantLaunchManager
     private val syncService = StrapiSyncService()
     private var countdownTimer: CountDownTimer? = null
     private var busy = false
+    private var qrToken: String = ""
     private var tenantCode: String = ""
     private var referralCode: String = ""
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        tenantCode = intent.getStringExtra(EXTRA_TENANT_CODE).orEmpty().trim()
-        referralCode = intent.getStringExtra(EXTRA_REFERRAL_CODE).orEmpty().trim()
+        tenantLaunchManager = TenantLaunchManager(this)
+        val storedContext = tenantLaunchManager.getContext()
+        qrToken = intent.getStringExtra(EXTRA_QR_TOKEN).orEmpty().trim().ifBlank { storedContext.qrToken }
+        tenantCode = intent.getStringExtra(EXTRA_TENANT_CODE).orEmpty().trim().ifBlank { storedContext.tenantCode }
+        referralCode = intent.getStringExtra(EXTRA_REFERRAL_CODE).orEmpty().trim().ifBlank { storedContext.referralCode }
+        if (qrToken.isNotBlank()) {
+            tenantLaunchManager.saveLaunchSelection(
+                qrToken = qrToken,
+                tenantCode = tenantCode,
+                referralCode = referralCode
+            )
+        }
         binding = ActivityVerifyPhoneBinding.inflate(layoutInflater)
         setContentView(binding.root)
 
@@ -75,6 +90,7 @@ class VerifyPhoneActivity : AppCompatActivity() {
 
         startCooldownIfNeeded()
         refreshActionState()
+        bootstrapTenantIfPossible()
     }
 
     override fun onDestroy() {
@@ -95,7 +111,7 @@ class VerifyPhoneActivity : AppCompatActivity() {
             return
         }
 
-        val appApiKey = getAppApiKeyOrShowError() ?: return
+        val tenantQrToken = getTenantQrTokenOrShowError() ?: return
         busy = true
         refreshActionState()
         binding.statusText.text = getString(R.string.status_sending_otp)
@@ -105,7 +121,7 @@ class VerifyPhoneActivity : AppCompatActivity() {
                 val result = withContext(Dispatchers.IO) {
                     syncService.sendPhoneOtp(
                         baseUrl = BuildConfig.APP_BASE_URL,
-                        appApiKey = appApiKey,
+                        tenantQrToken = tenantQrToken,
                         phone = phone
                     )
                 }
@@ -144,7 +160,7 @@ class VerifyPhoneActivity : AppCompatActivity() {
             return
         }
 
-        val appApiKey = getAppApiKeyOrShowError() ?: return
+        val tenantQrToken = getTenantQrTokenOrShowError() ?: return
         val deviceId = obtainDeviceId()
         busy = true
         refreshActionState()
@@ -155,7 +171,7 @@ class VerifyPhoneActivity : AppCompatActivity() {
                 val verified = withContext(Dispatchers.IO) {
                     syncService.verifyPhoneOtp(
                         baseUrl = BuildConfig.APP_BASE_URL,
-                        appApiKey = appApiKey,
+                        tenantQrToken = tenantQrToken,
                         phone = phone,
                         code = code
                     )
@@ -166,7 +182,7 @@ class VerifyPhoneActivity : AppCompatActivity() {
                 val registered = withContext(Dispatchers.IO) {
                     syncService.registerVerifiedUser(
                         baseUrl = BuildConfig.APP_BASE_URL,
-                        appApiKey = appApiKey,
+                        tenantQrToken = tenantQrToken,
                         phone = verified.phone,
                         deviceId = deviceId
                     )
@@ -179,6 +195,7 @@ class VerifyPhoneActivity : AppCompatActivity() {
                         context = this@VerifyPhoneActivity,
                         userId = registered.userId,
                         verifiedPhone = registered.phone,
+                        qrToken = tenantQrToken,
                         tenantCode = tenantCode,
                         referralCode = referralCode
                     )
@@ -244,14 +261,51 @@ class VerifyPhoneActivity : AppCompatActivity() {
 
     private fun getPrefs() = getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
 
-    private fun getAppApiKeyOrShowError(): String? {
-        val appApiKey = BuildConfig.APP_API_KEY
-        if (appApiKey.isBlank()) {
-            binding.statusText.text = getString(R.string.status_missing_app_api_key)
-            Toast.makeText(this, getString(R.string.toast_missing_app_api_key), Toast.LENGTH_LONG).show()
+    private fun bootstrapTenantIfPossible() {
+        if (qrToken.isBlank()) {
+            binding.statusText.text = getString(R.string.status_missing_tenant_qr)
+            return
+        }
+
+        lifecycleScope.launch {
+            try {
+                val bootstrap = withContext(Dispatchers.IO) {
+                    syncService.bootstrapTenant(
+                        baseUrl = BuildConfig.APP_BASE_URL,
+                        tenantQrToken = qrToken
+                    )
+                }
+                if (bootstrap.tenantCode.isNotBlank()) {
+                    tenantCode = bootstrap.tenantCode
+                }
+                tenantLaunchManager.saveLaunchSelection(
+                    qrToken = qrToken,
+                    tenantCode = tenantCode,
+                    referralCode = referralCode
+                )
+                tenantLaunchManager.updateTenantName(
+                    bootstrap.tenantName.ifBlank { bootstrap.appDisplayName }
+                )
+                if (binding.statusText.text.isNullOrBlank()) {
+                    binding.statusText.text = getString(
+                        R.string.status_tenant_selected,
+                        bootstrap.tenantName.ifBlank { bootstrap.appDisplayName.ifBlank { bootstrap.tenantCode } }
+                    )
+                }
+            } catch (_: Exception) {
+                binding.statusText.text = getString(R.string.status_missing_tenant_qr)
+            }
+        }
+    }
+
+    private fun getTenantQrTokenOrShowError(): String? {
+        val token = qrToken.ifBlank { tenantLaunchManager.getContext().qrToken }
+        if (token.isBlank()) {
+            binding.statusText.text = getString(R.string.status_missing_tenant_qr)
+            Toast.makeText(this, getString(R.string.toast_missing_tenant_qr), Toast.LENGTH_LONG).show()
             return null
         }
-        return appApiKey
+        return token
     }
 
     private fun obtainDeviceId(): String {

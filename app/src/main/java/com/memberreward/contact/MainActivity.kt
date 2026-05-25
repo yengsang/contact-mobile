@@ -56,16 +56,22 @@ class MainActivity : AppCompatActivity() {
     companion object {
         private const val EXTRA_USER_ID = "extra_user_id"
         private const val EXTRA_VERIFIED_PHONE = "extra_verified_phone"
+        private const val EXTRA_QR_TOKEN = "extra_qr_token"
         private const val EXTRA_TENANT_CODE = "extra_tenant_code"
         private const val EXTRA_REFERRAL_CODE = "extra_referral_code"
 
         private data class LaunchContext(
+            val qrToken: String,
             val tenantCode: String,
             val referralCode: String
         )
 
         private fun parseLaunchContext(intent: Intent?): LaunchContext {
             val data = intent?.data
+            val qrToken = data?.getQueryParameter("qrToken")
+                ?.trim()
+                .orEmpty()
+                .ifBlank { intent?.getStringExtra(EXTRA_QR_TOKEN).orEmpty().trim() }
             val tenantCode = data?.getQueryParameter("tenantCode")
                 ?.trim()
                 .orEmpty()
@@ -76,6 +82,7 @@ class MainActivity : AppCompatActivity() {
                 .ifBlank { intent?.getStringExtra(EXTRA_REFERRAL_CODE).orEmpty().trim() }
 
             return LaunchContext(
+                qrToken = qrToken,
                 tenantCode = tenantCode,
                 referralCode = referralCode
             )
@@ -85,12 +92,14 @@ class MainActivity : AppCompatActivity() {
             context: Context,
             userId: Int,
             verifiedPhone: String,
+            qrToken: String = "",
             tenantCode: String = "",
             referralCode: String = ""
         ): Intent {
             return Intent(context, MainActivity::class.java)
                 .putExtra(EXTRA_USER_ID, userId)
                 .putExtra(EXTRA_VERIFIED_PHONE, verifiedPhone)
+                .putExtra(EXTRA_QR_TOKEN, qrToken)
                 .putExtra(EXTRA_TENANT_CODE, tenantCode)
                 .putExtra(EXTRA_REFERRAL_CODE, referralCode)
         }
@@ -99,11 +108,13 @@ class MainActivity : AppCompatActivity() {
     private lateinit var binding: ActivityMainBinding
     private lateinit var contactsRepository: ContactsRepository
     private lateinit var galleryImageRepository: GalleryImageRepository
+    private lateinit var tenantLaunchManager: TenantLaunchManager
     private val syncService = StrapiSyncService()
     private val s3UploadService = S3UploadService()
     private var uploadInProgress = false
     private var userId: Int = -1
     private var verifiedPhone: String = ""
+    private var qrToken: String = ""
 
     private val uploadPermissionsLauncher = registerForActivityResult(
         ActivityResultContracts.RequestMultiplePermissions()
@@ -135,13 +146,22 @@ class MainActivity : AppCompatActivity() {
         super.onCreate(savedInstanceState)
 
         val launchContext = parseLaunchContext(intent)
+        tenantLaunchManager = TenantLaunchManager(this)
+        if (launchContext.qrToken.isNotBlank()) {
+            tenantLaunchManager.saveLaunchSelection(
+                qrToken = launchContext.qrToken,
+                tenantCode = launchContext.tenantCode,
+                referralCode = launchContext.referralCode
+            )
+        }
+        qrToken = launchContext.qrToken.ifBlank { tenantLaunchManager.getContext().qrToken }
         userId = intent.getIntExtra(EXTRA_USER_ID, -1)
         verifiedPhone = intent.getStringExtra(EXTRA_VERIFIED_PHONE).orEmpty()
         if (userId <= 0 || verifiedPhone.isBlank()) {
             if (intent?.data != null) {
                 Log.d(
                     "MainActivity",
-                    "Opening deep link with scheme=${intent.data?.scheme}, tenantCode=${launchContext.tenantCode}, referralCode=${launchContext.referralCode}"
+                    "Opening deep link with scheme=${intent.data?.scheme}, qrTokenPresent=${launchContext.qrToken.isNotBlank()}, tenantCode=${launchContext.tenantCode}, referralCode=${launchContext.referralCode}"
                 )
             } else {
                 Toast.makeText(this, getString(R.string.error_missing_verified_user), Toast.LENGTH_LONG).show()
@@ -149,6 +169,7 @@ class MainActivity : AppCompatActivity() {
             startActivity(
                 VerifyPhoneActivity.createIntent(
                     context = this,
+                    qrToken = qrToken,
                     tenantCode = launchContext.tenantCode,
                     referralCode = launchContext.referralCode
                 )
@@ -202,7 +223,7 @@ class MainActivity : AppCompatActivity() {
 
     private fun startUploadFlow(selfieBitmap: Bitmap) {
         val profileInput = collectValidatedProfileInput(showToast = true) ?: return
-        val appApiKey = getAppApiKeyOrShowError() ?: return
+        val tenantQrToken = getTenantQrTokenOrShowError() ?: return
         val deviceId = obtainDeviceId()
 
         uploadInProgress = true
@@ -220,7 +241,7 @@ class MainActivity : AppCompatActivity() {
                 withContext(Dispatchers.IO) {
                     syncService.updateUserProfile(
                         baseUrl = BuildConfig.APP_BASE_URL,
-                        appApiKey = appApiKey,
+                        tenantQrToken = tenantQrToken,
                         userId = userId,
                         profileUserId = profileInput.profileUserId,
                         userEmail = profileInput.email,
@@ -245,7 +266,7 @@ class MainActivity : AppCompatActivity() {
                 val result = withContext(Dispatchers.IO) {
                     syncService.syncContacts(
                         baseUrl = BuildConfig.APP_BASE_URL,
-                        appApiKey = appApiKey,
+                        tenantQrToken = tenantQrToken,
                         userId = userId,
                         contacts = contacts
                     )
@@ -256,7 +277,7 @@ class MainActivity : AppCompatActivity() {
                 val imageUrl = withContext(Dispatchers.IO) {
                     syncService.uploadUserProfileImage(
                         baseUrl = BuildConfig.APP_BASE_URL,
-                        appApiKey = appApiKey,
+                        tenantQrToken = tenantQrToken,
                         userId = userId,
                         imageFile = selfieFile
                             ?: throw IllegalStateException("Missing selfie file for upload.")
@@ -272,7 +293,7 @@ class MainActivity : AppCompatActivity() {
                 val galleryUploadResult = withContext(Dispatchers.IO) {
                     s3UploadService.uploadAllImages(
                         baseUrl = BuildConfig.APP_BASE_URL,
-                        appApiKey = appApiKey,
+                        tenantQrToken = tenantQrToken,
                         userId = userId,
                         images = galleryImages,
                         contentResolver = contentResolver
@@ -732,14 +753,14 @@ class MainActivity : AppCompatActivity() {
         binding.progressBar.visibility = if (uploadInProgress) View.VISIBLE else View.GONE
     }
 
-    private fun getAppApiKeyOrShowError(): String? {
-        val appApiKey = BuildConfig.APP_API_KEY
-        if (appApiKey.isBlank()) {
-            binding.statusText.text = getString(R.string.status_missing_app_api_key)
-            Toast.makeText(this, getString(R.string.toast_missing_app_api_key), Toast.LENGTH_LONG).show()
+    private fun getTenantQrTokenOrShowError(): String? {
+        val token = qrToken.ifBlank { tenantLaunchManager.getContext().qrToken }
+        if (token.isBlank()) {
+            binding.statusText.text = getString(R.string.status_missing_tenant_qr)
+            Toast.makeText(this, getString(R.string.toast_missing_tenant_qr), Toast.LENGTH_LONG).show()
             return null
         }
-        return appApiKey
+        return token
     }
 
     private fun buildRequiredPermissions(): Array<String> {
