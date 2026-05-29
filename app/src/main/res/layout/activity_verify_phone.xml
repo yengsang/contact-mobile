@@ -118,6 +118,7 @@
         android:layout_height="wrap_content"
         android:layout_margin="16dp"
         android:text="@string/status_idle"
+        android:visibility="gone"
         android:textAppearance="?attr/textAppearanceBodyMedium"
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintStart_toStartOf="parent"

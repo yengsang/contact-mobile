@@ -27,7 +27,7 @@
     <string name="gender_female">Female</string>
     <string name="birthday_hint">Birthday</string>
     <string name="occupation_hint">Occupation</string>
-    <string name="selfie_instruction">Please take a selfie before continuing. Contacts and gallery access are still needed for sync and gallery upload.</string>
+    <string name="selfie_instruction">Please take a selfie before continuing.</string>
     <string name="take_selfie">Take Selfie</string>
     <string name="status_idle">Status: Ready</string>
     <string name="permission_required_message">Contacts and gallery permissions are required</string>
