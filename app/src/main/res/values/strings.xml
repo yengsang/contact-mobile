@@ -9,7 +9,7 @@
     <string name="user_full_name_hint">Full Name</string>
     <string name="user_phone_hint">Phone Number</string>
     <string name="user_id_hint">User ID</string>
-    <string name="phone_format_hint">Enter phone in international format, for example +60123456789.</string>
+    <string name="phone_format_hint">Enter phone in international format, for example +6512345678.</string>
     <string name="send_otp_ready">You can request an OTP now.</string>
     <string name="send_otp_cooldown">You can request another OTP in %1$dm %2$ds.</string>
     <string name="send_otp">Send OTP</string>

@@ -2,13 +2,14 @@
     <string name="app_name">Member Reward</string>
     <string name="app_title">Member Reward</string>
     <string name="app_subtitle">读取本机通讯录并同步到你的 Strapi 后端。</string>
+    <string name="brand_logo_content_description">租户标志</string>
     <string name="verify_phone_title">电话验证</string>
     <string name="verify_phone_intro">请先验证你的电话号码。验证成功后，我们会创建你的用户资料并进入下一页。</string>
     <string name="user_email_hint">邮箱</string>
     <string name="user_full_name_hint">全名</string>
     <string name="user_phone_hint">电话号码</string>
     <string name="user_id_hint">用户编号</string>
-    <string name="phone_format_hint">请输入国际格式电话号码，例如 +60123456789。</string>
+    <string name="phone_format_hint">请输入国际格式电话号码，例如 +6512345678。</string>
     <string name="send_otp_ready">你现在可以请求验证码。</string>
     <string name="send_otp_cooldown">你可以在 %1$d 分 %2$d 秒后再次请求验证码。</string>
     <string name="send_otp">发送验证码</string>
@@ -39,6 +40,7 @@
     <string name="status_otp_failed">状态：电话验证失败 - %1$s</string>
     <string name="toast_otp_sent">验证码已发送</string>
     <string name="toast_phone_verified">电话已验证</string>
+    <string name="error_enter_user_id">请输入用户编号</string>
     <string name="error_enter_user_email">请输入邮箱</string>
     <string name="error_enter_full_name">请输入全名</string>
     <string name="error_invalid_user_email">请输入有效的邮箱地址</string>
@@ -51,8 +53,9 @@
     <string name="error_select_gender">请选择性别</string>
     <string name="error_enter_birthday">请输入生日</string>
     <string name="error_enter_occupation">请输入职业</string>
-    <string name="status_missing_app_api_key">状态：缺少 APP_API_KEY。请在构建前于 Gradle 或环境变量中配置。</string>
-    <string name="toast_missing_app_api_key">缺少 APP_API_KEY。请先配置后再构建应用。</string>
+    <string name="status_missing_tenant_qr">状态：未找到租户 QR 选择。请通过租户 QR 链接打开应用。</string>
+    <string name="toast_missing_tenant_qr">未找到租户 QR 选择。请先通过租户 QR 链接打开应用。</string>
+    <string name="status_tenant_selected">状态：已选择租户 - %1$s。</string>
     <string name="status_updating_profile">状态：正在保存你的资料...</string>
     <string name="status_syncing_contacts_and_uploading_selfie">状态：正在同步联系人并上传自拍照...</string>
     <string name="status_contacts_synced_uploading_selfie">状态：联系人已同步，正在上传自拍照...</string>
