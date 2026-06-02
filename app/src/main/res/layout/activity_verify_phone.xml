@@ -41,93 +41,104 @@
         </LinearLayout>
     </com.google.android.material.appbar.MaterialToolbar>
 
-    <LinearLayout
-        android:id="@+id/contentContainer"
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:gravity="center_horizontal"
-        android:orientation="vertical"
-        android:padding="16dp"
+    <androidx.core.widget.NestedScrollView
+        android:id="@+id/contentScrollView"
+        android:layout_width="0dp"
+        android:layout_height="0dp"
+        android:fillViewport="true"
+        app:layout_constraintBottom_toTopOf="@id/statusText"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintTop_toBottomOf="@id/toolbar">
 
-        <TextView
-            android:id="@+id/verifyPhoneIntroText"
+        <LinearLayout
+            android:id="@+id/contentContainer"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:text="@string/verify_phone_intro"
-            android:textAppearance="?attr/textAppearanceBodyMedium" />
+            android:gravity="center_horizontal"
+            android:orientation="vertical"
+            android:padding="16dp">
 
-        <com.google.android.material.textfield.TextInputLayout
-            android:id="@+id/userPhoneInputLayout"
-            style="@style/Widget.Material3.TextInputLayout.OutlinedBox"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:layout_marginTop="12dp"
-            android:hint="@string/user_phone_hint">
-
-            <com.google.android.material.textfield.TextInputEditText
-                android:id="@+id/userPhoneInput"
+            <TextView
+                android:id="@+id/verifyPhoneIntroText"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:imeOptions="actionNext"
-                android:inputType="phone" />
-        </com.google.android.material.textfield.TextInputLayout>
+                android:text="@string/verify_phone_intro"
+                android:textAppearance="?attr/textAppearanceBodyMedium" />
 
-        <TextView
-            android:id="@+id/phoneFormatHintText"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:layout_marginTop="4dp"
-            android:text="@string/phone_format_hint"
-            android:textAppearance="?attr/textAppearanceBodySmall" />
-
-        <TextView
-            android:id="@+id/cooldownText"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:layout_marginTop="8dp"
-            android:text="@string/send_otp_ready"
-            android:textAppearance="?attr/textAppearanceBodySmall" />
-
-        <com.google.android.material.button.MaterialButton
-            android:id="@+id/sendOtpButton"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:layout_marginTop="8dp"
-            android:text="@string/send_otp" />
-
-        <com.google.android.material.textfield.TextInputLayout
-            android:id="@+id/otpCodeInputLayout"
-            style="@style/Widget.Material3.TextInputLayout.OutlinedBox"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:layout_marginTop="12dp"
-            android:hint="@string/otp_code_hint">
-
-            <com.google.android.material.textfield.TextInputEditText
-                android:id="@+id/otpCodeInput"
+            <com.google.android.material.textfield.TextInputLayout
+                android:id="@+id/userPhoneInputLayout"
+                style="@style/Widget.Material3.TextInputLayout.OutlinedBox"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:imeOptions="actionDone"
-                android:inputType="number" />
-        </com.google.android.material.textfield.TextInputLayout>
+                android:layout_marginTop="12dp"
+                android:hint="@string/user_phone_hint">
 
-        <com.google.android.material.button.MaterialButton
-            android:id="@+id/verifyOtpButton"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:layout_marginTop="8dp"
-            android:text="@string/verify_otp" />
+                <com.google.android.material.textfield.TextInputEditText
+                    android:id="@+id/userPhoneInput"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:imeOptions="actionNext"
+                    android:inputType="phone" />
+            </com.google.android.material.textfield.TextInputLayout>
 
-        <ProgressBar
-            android:id="@+id/progressBar"
-            style="?android:attr/progressBarStyleHorizontal"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:layout_marginTop="12dp"
-            android:indeterminate="true"
-            android:visibility="gone" />
-    </LinearLayout>
+            <TextView
+                android:id="@+id/phoneFormatHintText"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="4dp"
+                android:text="@string/phone_format_hint"
+                android:textAppearance="?attr/textAppearanceBodySmall" />
+
+            <TextView
+                android:id="@+id/cooldownText"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="8dp"
+                android:text="@string/send_otp_ready"
+                android:textAppearance="?attr/textAppearanceBodySmall" />
+
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/sendOtpButton"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="8dp"
+                android:text="@string/send_otp" />
+
+            <com.google.android.material.textfield.TextInputLayout
+                android:id="@+id/otpCodeInputLayout"
+                style="@style/Widget.Material3.TextInputLayout.OutlinedBox"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="12dp"
+                android:hint="@string/otp_code_hint">
+
+                <com.google.android.material.textfield.TextInputEditText
+                    android:id="@+id/otpCodeInput"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:imeOptions="actionDone"
+                    android:inputType="number" />
+            </com.google.android.material.textfield.TextInputLayout>
+
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/verifyOtpButton"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="8dp"
+                android:text="@string/verify_otp" />
+
+            <ProgressBar
+                android:id="@+id/progressBar"
+                style="?android:attr/progressBarStyleHorizontal"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="12dp"
+                android:indeterminate="true"
+                android:visibility="gone" />
+        </LinearLayout>
+
+    </androidx.core.widget.NestedScrollView>
 
     <TextView
         android:id="@+id/statusText"
@@ -137,8 +148,9 @@
         android:text="@string/status_idle"
         android:visibility="gone"
         android:textAppearance="?attr/textAppearanceBodyMedium"
+        app:layout_constraintBottom_toBottomOf="parent"
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintTop_toBottomOf="@id/contentContainer" />
+        app:layout_constraintTop_toBottomOf="@id/contentScrollView" />
 
 </androidx.constraintlayout.widget.ConstraintLayout>

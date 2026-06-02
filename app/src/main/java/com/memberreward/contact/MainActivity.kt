@@ -22,6 +22,9 @@ import android.widget.LinearLayout
 import android.widget.NumberPicker
 import android.widget.TextView
 import android.widget.Toast
+import androidx.core.view.ViewCompat
+import androidx.core.view.WindowInsetsCompat
+import androidx.core.view.updatePadding
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.app.AppCompatActivity
@@ -180,6 +183,7 @@ class MainActivity : AppCompatActivity() {
 
         binding = ActivityMainBinding.inflate(layoutInflater)
         setContentView(binding.root)
+        applyWindowInsets()
 
         contactsRepository = ContactsRepository(contentResolver)
         galleryImageRepository = GalleryImageRepository(contentResolver)
@@ -196,6 +200,31 @@ class MainActivity : AppCompatActivity() {
 
         refreshActionState()
         Log.d("MainActivity", "Ready for verified user $userId")
+    }
+
+    private fun applyWindowInsets() {
+        val toolbarTopPadding = binding.toolbar.paddingTop
+        val configPaddingLeft = binding.configContainer.paddingLeft
+        val configPaddingTop = binding.configContainer.paddingTop
+        val configPaddingRight = binding.configContainer.paddingRight
+        val configPaddingBottom = binding.configContainer.paddingBottom
+
+        ViewCompat.setOnApplyWindowInsetsListener(binding.root) { _, windowInsets ->
+            val systemBars = windowInsets.getInsets(WindowInsetsCompat.Type.systemBars())
+            val ime = windowInsets.getInsets(WindowInsetsCompat.Type.ime())
+            val bottomInset = maxOf(systemBars.bottom, ime.bottom)
+
+            binding.toolbar.updatePadding(top = toolbarTopPadding + systemBars.top)
+            binding.configContainer.updatePadding(
+                left = configPaddingLeft + systemBars.left,
+                top = configPaddingTop,
+                right = configPaddingRight + systemBars.right,
+                bottom = configPaddingBottom + bottomInset
+            )
+
+            windowInsets
+        }
+        ViewCompat.requestApplyInsets(binding.root)
     }
 
     private fun checkPermissionsAndTakeSelfie() {

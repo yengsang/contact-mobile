@@ -19,7 +19,7 @@ fun escapedConfig(vararg keys: String): String {
         .replace("\"", "\\\"")
 }
 
-val defaultBaseUrl = escapedConfig("APP_BASE_URL").ifBlank { "https://api.yengsang.com" }
+val defaultBaseUrl = escapedConfig("APP_BASE_URL").ifBlank { "https://api.findocly.com" }
 val sharedDeepLinkScheme = escapedConfig("APP_DEEP_LINK_SCHEME", "SHARED_ANDROID_DEEP_LINK_SCHEME")
     .ifBlank { "memberreward" }
 

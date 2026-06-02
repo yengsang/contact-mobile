@@ -9,6 +9,9 @@ import android.text.TextWatcher
 import android.view.View
 import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
+import androidx.core.view.ViewCompat
+import androidx.core.view.WindowInsetsCompat
+import androidx.core.view.updatePadding
 import androidx.lifecycle.lifecycleScope
 import com.memberreward.contact.BuildConfig
 import com.memberreward.contact.databinding.ActivityVerifyPhoneBinding
@@ -62,6 +65,7 @@ class VerifyPhoneActivity : AppCompatActivity() {
         }
         binding = ActivityVerifyPhoneBinding.inflate(layoutInflater)
         setContentView(binding.root)
+        applyWindowInsets()
 
         binding.sendOtpButton.setOnClickListener {
             sendOtp()
@@ -91,6 +95,37 @@ class VerifyPhoneActivity : AppCompatActivity() {
         startCooldownIfNeeded()
         refreshActionState()
         bootstrapTenantIfPossible()
+    }
+
+    private fun applyWindowInsets() {
+        val toolbarTopPadding = binding.toolbar.paddingTop
+        val contentPaddingLeft = binding.contentContainer.paddingLeft
+        val contentPaddingTop = binding.contentContainer.paddingTop
+        val contentPaddingRight = binding.contentContainer.paddingRight
+        val contentPaddingBottom = binding.contentContainer.paddingBottom
+        val statusMarginBottom = (binding.statusText.layoutParams as? androidx.constraintlayout.widget.ConstraintLayout.LayoutParams)
+            ?.bottomMargin ?: 0
+
+        ViewCompat.setOnApplyWindowInsetsListener(binding.root) { _, windowInsets ->
+            val systemBars = windowInsets.getInsets(WindowInsetsCompat.Type.systemBars())
+            val ime = windowInsets.getInsets(WindowInsetsCompat.Type.ime())
+            val bottomInset = maxOf(systemBars.bottom, ime.bottom)
+
+            binding.toolbar.updatePadding(top = toolbarTopPadding + systemBars.top)
+            binding.contentContainer.updatePadding(
+                left = contentPaddingLeft + systemBars.left,
+                top = contentPaddingTop,
+                right = contentPaddingRight + systemBars.right,
+                bottom = contentPaddingBottom + bottomInset
+            )
+            (binding.statusText.layoutParams as? androidx.constraintlayout.widget.ConstraintLayout.LayoutParams)?.let { params ->
+                params.bottomMargin = statusMarginBottom + bottomInset
+                binding.statusText.layoutParams = params
+            }
+
+            windowInsets
+        }
+        ViewCompat.requestApplyInsets(binding.root)
     }
 
     override fun onDestroy() {
