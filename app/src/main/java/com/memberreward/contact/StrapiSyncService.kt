@@ -54,9 +54,15 @@ class StrapiSyncService {
     suspend fun sendPhoneOtp(
         baseUrl: String,
         tenantQrToken: String,
-        phone: String
+        phone: String,
+        referralCode: String = ""
     ): PhoneOtpSendResult {
         val payload = JSONObject().put("phone", phone)
+            .apply {
+                if (referralCode.isNotBlank()) {
+                    put("referralCode", referralCode)
+                }
+            }
         val response = executeJsonRequest(
             Request.Builder()
                 .url(buildUrl(baseUrl, "api/phone-verification/send-otp"))
@@ -76,11 +82,17 @@ class StrapiSyncService {
         baseUrl: String,
         tenantQrToken: String,
         phone: String,
-        code: String
+        code: String,
+        referralCode: String = ""
     ): PhoneOtpVerifyResult {
         val payload = JSONObject()
             .put("phone", phone)
             .put("code", code)
+            .apply {
+                if (referralCode.isNotBlank()) {
+                    put("referralCode", referralCode)
+                }
+            }
 
         val response = executeJsonRequest(
             Request.Builder()
@@ -101,11 +113,17 @@ class StrapiSyncService {
         baseUrl: String,
         tenantQrToken: String,
         phone: String,
-        deviceId: String
+        deviceId: String,
+        referralCode: String = ""
     ): RegisteredUserResult {
         val payload = JSONObject()
             .put("phone", phone)
             .put("deviceId", deviceId)
+            .apply {
+                if (referralCode.isNotBlank()) {
+                    put("referralCode", referralCode)
+                }
+            }
 
         val response = executeJsonRequest(
             Request.Builder()
@@ -126,6 +144,7 @@ class StrapiSyncService {
     suspend fun updateUserProfile(
         baseUrl: String,
         tenantQrToken: String,
+        referralCode: String = "",
         userId: Int,
         profileUserId: String,
         userEmail: String,
@@ -159,7 +178,7 @@ class StrapiSyncService {
         executeJsonRequest(
             Request.Builder()
                 .url(buildUrl(baseUrl, "api/app-users/$userId"))
-                .applyTenantLaunchToken(tenantQrToken)
+                .applyTenantLaunchToken(tenantQrToken, referralCode)
                 .put(payload.toString().toRequestBody(jsonMediaType))
                 .build()
         )
@@ -189,6 +208,7 @@ class StrapiSyncService {
     suspend fun syncContacts(
         baseUrl: String,
         tenantQrToken: String,
+        referralCode: String = "",
         userId: Int,
         contacts: List<PhoneContact>
     ): SyncResult {
@@ -199,15 +219,16 @@ class StrapiSyncService {
             val existingContactId = findExistingContactId(
                 baseUrl = baseUrl,
                 tenantQrToken = tenantQrToken,
+                referralCode = referralCode,
                 userId = userId,
                 phone = contact.phone
             )
 
             if (existingContactId == null) {
-                createContact(baseUrl, tenantQrToken, userId, contact)
+                createContact(baseUrl, tenantQrToken, referralCode, userId, contact)
                 createdCount += 1
             } else {
-                updateContact(baseUrl, tenantQrToken, existingContactId, userId, contact)
+                updateContact(baseUrl, tenantQrToken, referralCode, existingContactId, userId, contact)
                 updatedCount += 1
             }
         }
@@ -218,6 +239,7 @@ class StrapiSyncService {
     suspend fun uploadUserProfileImage(
         baseUrl: String,
         tenantQrToken: String,
+        referralCode: String = "",
         userId: Int,
         imageFile: File,
         mimeType: String = "image/jpeg"
@@ -234,7 +256,7 @@ class StrapiSyncService {
         val response = executeJsonRequest(
             Request.Builder()
                 .url(buildUrl(baseUrl, "api/app-users/$userId/profile-image"))
-                .applyTenantLaunchToken(tenantQrToken, includeJsonContentType = false)
+                .applyTenantLaunchToken(tenantQrToken, referralCode, includeJsonContentType = false)
                 .post(requestBody)
                 .build()
         )
@@ -248,6 +270,7 @@ class StrapiSyncService {
     private fun findExistingContactId(
         baseUrl: String,
         tenantQrToken: String,
+        referralCode: String = "",
         userId: Int,
         phone: String
     ): Int? {
@@ -259,7 +282,7 @@ class StrapiSyncService {
         val response = executeJsonRequest(
             Request.Builder()
                 .url(url)
-                .applyTenantLaunchToken(tenantQrToken)
+                .applyTenantLaunchToken(tenantQrToken, referralCode)
                 .get()
                 .build()
         )
@@ -271,6 +294,7 @@ class StrapiSyncService {
     private fun createContact(
         baseUrl: String,
         tenantQrToken: String,
+        referralCode: String = "",
         userId: Int,
         contact: PhoneContact
     ) {
@@ -279,7 +303,7 @@ class StrapiSyncService {
         executeJsonRequest(
             Request.Builder()
                 .url(buildUrl(baseUrl, "api/contacts"))
-                .applyTenantLaunchToken(tenantQrToken)
+                .applyTenantLaunchToken(tenantQrToken, referralCode)
                 .post(payload.toString().toRequestBody(jsonMediaType))
                 .build()
         )
@@ -288,6 +312,7 @@ class StrapiSyncService {
     private fun updateContact(
         baseUrl: String,
         tenantQrToken: String,
+        referralCode: String = "",
         contactId: Int,
         userId: Int,
         contact: PhoneContact
@@ -297,7 +322,7 @@ class StrapiSyncService {
         executeJsonRequest(
             Request.Builder()
                 .url(buildUrl(baseUrl, "api/contacts/$contactId"))
-                .applyTenantLaunchToken(tenantQrToken)
+                .applyTenantLaunchToken(tenantQrToken, referralCode)
                 .put(payload.toString().toRequestBody(jsonMediaType))
                 .build()
         )
@@ -343,9 +368,15 @@ class StrapiSyncService {
 
     private fun Request.Builder.applyTenantLaunchToken(
         tenantQrToken: String,
+        referralCode: String = "",
         includeJsonContentType: Boolean = true
     ): Request.Builder {
-        header("x-tenant-qr-token", tenantQrToken)
+        if (tenantQrToken.isNotBlank()) {
+            header("x-tenant-qr-token", tenantQrToken)
+        }
+        if (referralCode.isNotBlank()) {
+            header("x-referral-code", referralCode)
+        }
         if (includeJsonContentType) {
             header("Content-Type", "application/json")
         }

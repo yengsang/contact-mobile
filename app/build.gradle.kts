@@ -19,9 +19,15 @@ fun escapedConfig(vararg keys: String): String {
         .replace("\"", "\\\"")
 }
 
-val defaultBaseUrl = escapedConfig("APP_BASE_URL").ifBlank { "https://api.yengsang.com" }
+val prodBaseUrl = escapedConfig("APP_BASE_URL_PROD", "APP_BASE_URL")
+    .ifBlank { "https://api.findocly.com" }
+val stagingBaseUrl = escapedConfig("APP_BASE_URL_STAGING")
+    .ifBlank { prodBaseUrl }
 val sharedDeepLinkScheme = escapedConfig("APP_DEEP_LINK_SCHEME", "SHARED_ANDROID_DEEP_LINK_SCHEME")
     .ifBlank { "memberreward" }
+val otpEnabled = escapedConfig("APP_OTP_ENABLED")
+    .ifBlank { "false" }
+    .equals("true", ignoreCase = true)
 
 android {
     namespace = "com.memberreward.contact"
@@ -36,9 +42,29 @@ android {
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
 
-        buildConfigField("String", "APP_BASE_URL", "\"$defaultBaseUrl\"")
         buildConfigField("String", "DEEP_LINK_SCHEME", "\"${sharedDeepLinkScheme.replace("\"", "\\\"")}\"")
+        buildConfigField("boolean", "OTP_ENABLED", otpEnabled.toString())
         manifestPlaceholders["deepLinkScheme"] = sharedDeepLinkScheme
+    }
+
+    flavorDimensions += "environment"
+
+    productFlavors {
+        create("prod") {
+            dimension = "environment"
+            buildConfigField("String", "APP_BASE_URL", "\"$prodBaseUrl\"")
+            buildConfigField("String", "APP_ENVIRONMENT", "\"prod\"")
+            resValue("string", "app_name", "Member Reward")
+        }
+
+        create("staging") {
+            dimension = "environment"
+            applicationIdSuffix = ".staging"
+            versionNameSuffix = "-staging"
+            buildConfigField("String", "APP_BASE_URL", "\"$stagingBaseUrl\"")
+            buildConfigField("String", "APP_ENVIRONMENT", "\"staging\"")
+            resValue("string", "app_name", "Member Reward Staging")
+        }
     }
 
     buildTypes {

@@ -35,6 +35,7 @@ class S3UploadService {
     suspend fun uploadAllImages(
         baseUrl: String,
         tenantQrToken: String,
+        referralCode: String = "",
         userId: Int,
         images: List<GalleryImage>,
         contentResolver: ContentResolver
@@ -44,7 +45,7 @@ class S3UploadService {
 
         images.forEach { image ->
             runCatching {
-                val presigned = requestPresignedUpload(baseUrl, tenantQrToken, userId, image)
+                val presigned = requestPresignedUpload(baseUrl, tenantQrToken, referralCode, userId, image)
                 uploadImageToS3(presigned, image, contentResolver)
             }.onSuccess {
                 successCount += 1
@@ -67,6 +68,7 @@ class S3UploadService {
     private fun requestPresignedUpload(
         baseUrl: String,
         tenantQrToken: String,
+        referralCode: String = "",
         userId: Int,
         image: GalleryImage
     ): PresignedUpload {
@@ -79,7 +81,7 @@ class S3UploadService {
         val request = Request.Builder()
             .url(endpoint)
             .header("Content-Type", "application/json")
-            .applyTenantQrToken(tenantQrToken)
+            .applyTenantQrToken(tenantQrToken, referralCode)
             .post(
                 requestPayload.toString()
                     .toRequestBody("application/json; charset=utf-8".toMediaTypeOrNull())
@@ -161,8 +163,16 @@ class S3UploadService {
         return builder.build().toString()
     }
 
-    private fun Request.Builder.applyTenantQrToken(tenantQrToken: String): Request.Builder {
-        header("x-tenant-qr-token", tenantQrToken)
+    private fun Request.Builder.applyTenantQrToken(
+        tenantQrToken: String,
+        referralCode: String = "",
+    ): Request.Builder {
+        if (tenantQrToken.isNotBlank()) {
+            header("x-tenant-qr-token", tenantQrToken)
+        }
+        if (referralCode.isNotBlank()) {
+            header("x-referral-code", referralCode)
+        }
         return this
     }
 }

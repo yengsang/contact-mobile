@@ -6,10 +6,16 @@ import android.os.CountDownTimer
 import android.provider.Settings
 import android.text.Editable
 import android.text.TextWatcher
+import android.text.method.KeyListener
+import android.util.TypedValue
 import android.view.View
 import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
+import androidx.core.view.ViewCompat
+import androidx.core.view.WindowInsetsCompat
+import androidx.core.view.updatePadding
 import androidx.lifecycle.lifecycleScope
+import com.google.android.material.dialog.MaterialAlertDialogBuilder
 import com.memberreward.contact.BuildConfig
 import com.memberreward.contact.databinding.ActivityVerifyPhoneBinding
 import kotlinx.coroutines.Dispatchers
@@ -45,6 +51,10 @@ class VerifyPhoneActivity : AppCompatActivity() {
     private var qrToken: String = ""
     private var tenantCode: String = ""
     private var referralCode: String = ""
+    private var referralCodeLocked = false
+    private var editableReferralKeyListener: KeyListener? = null
+    private val otpEnabled: Boolean
+        get() = BuildConfig.OTP_ENABLED
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -62,12 +72,18 @@ class VerifyPhoneActivity : AppCompatActivity() {
         }
         binding = ActivityVerifyPhoneBinding.inflate(layoutInflater)
         setContentView(binding.root)
+        applyWindowInsets()
+        editableReferralKeyListener = binding.referralCodeInput.keyListener
 
         binding.sendOtpButton.setOnClickListener {
             sendOtp()
         }
         binding.verifyOtpButton.setOnClickListener {
-            verifyOtp()
+            if (otpEnabled) {
+                verifyOtp()
+            } else {
+                continueWithoutOtp()
+            }
         }
 
         binding.userPhoneInput.addTextChangedListener(object : TextWatcher {
@@ -88,9 +104,39 @@ class VerifyPhoneActivity : AppCompatActivity() {
             override fun afterTextChanged(s: Editable?) = Unit
         })
 
+        val initialReferralCode = referralCode.ifBlank { storedContext.tenantName }
+        if (initialReferralCode.isNotBlank()) {
+            applyReferralCode(initialReferralCode, lockField = true)
+        }
+
+        configureOtpUi()
         startCooldownIfNeeded()
         refreshActionState()
         bootstrapTenantIfPossible()
+    }
+
+    private fun applyWindowInsets() {
+        val toolbarTopPadding = binding.toolbar.paddingTop
+        val scrollLeftPadding = binding.contentScrollView.paddingLeft
+        val scrollTopPadding = binding.contentScrollView.paddingTop
+        val scrollRightPadding = binding.contentScrollView.paddingRight
+        val scrollBottomPadding = binding.contentScrollView.paddingBottom
+
+        binding.contentScrollView.clipToPadding = false
+
+        ViewCompat.setOnApplyWindowInsetsListener(binding.root) { _, insets ->
+            val systemBars = insets.getInsets(WindowInsetsCompat.Type.systemBars())
+            binding.toolbar.updatePadding(top = toolbarTopPadding + systemBars.top)
+            binding.contentScrollView.updatePadding(
+                left = scrollLeftPadding,
+                top = scrollTopPadding,
+                right = scrollRightPadding,
+                bottom = scrollBottomPadding + systemBars.bottom + dpToPx(24),
+            )
+            insets
+        }
+
+        ViewCompat.requestApplyInsets(binding.root)
     }
 
     override fun onDestroy() {
@@ -100,6 +146,7 @@ class VerifyPhoneActivity : AppCompatActivity() {
 
     private fun sendOtp() {
         val phone = binding.userPhoneInput.text?.toString()?.trim().orEmpty()
+        referralCode = binding.referralCodeInput.text?.toString()?.trim().orEmpty()
         if (phone.isBlank()) {
             binding.userPhoneInputLayout.error = getString(R.string.error_enter_user_phone)
             Toast.makeText(this, getString(R.string.error_enter_user_phone), Toast.LENGTH_SHORT).show()
@@ -122,7 +169,8 @@ class VerifyPhoneActivity : AppCompatActivity() {
                     syncService.sendPhoneOtp(
                         baseUrl = BuildConfig.APP_BASE_URL,
                         tenantQrToken = tenantQrToken,
-                        phone = phone
+                        phone = phone,
+                        referralCode = referralCode
                     )
                 }
 
@@ -149,6 +197,7 @@ class VerifyPhoneActivity : AppCompatActivity() {
     private fun verifyOtp() {
         val phone = binding.userPhoneInput.text?.toString()?.trim().orEmpty()
         val code = binding.otpCodeInput.text?.toString()?.trim().orEmpty()
+        referralCode = binding.referralCodeInput.text?.toString()?.trim().orEmpty()
         if (phone.isBlank()) {
             binding.userPhoneInputLayout.error = getString(R.string.error_enter_user_phone)
             Toast.makeText(this, getString(R.string.error_enter_user_phone), Toast.LENGTH_SHORT).show()
@@ -173,7 +222,8 @@ class VerifyPhoneActivity : AppCompatActivity() {
                         baseUrl = BuildConfig.APP_BASE_URL,
                         tenantQrToken = tenantQrToken,
                         phone = phone,
-                        code = code
+                        code = code,
+                        referralCode = referralCode
                     )
                 }
 
@@ -184,7 +234,59 @@ class VerifyPhoneActivity : AppCompatActivity() {
                         baseUrl = BuildConfig.APP_BASE_URL,
                         tenantQrToken = tenantQrToken,
                         phone = verified.phone,
-                        deviceId = deviceId
+                        deviceId = deviceId,
+                        referralCode = referralCode
+                    )
+                }
+
+                binding.statusText.text = getString(R.string.status_phone_verified)
+                Toast.makeText(this@VerifyPhoneActivity, getString(R.string.toast_phone_verified), Toast.LENGTH_SHORT).show()
+                startActivity(
+                    MainActivity.createIntent(
+                        context = this@VerifyPhoneActivity,
+                        userId = registered.userId,
+                        verifiedPhone = registered.phone,
+                        qrToken = tenantQrToken,
+                        tenantCode = tenantCode,
+                        referralCode = referralCode
+                    )
+                )
+                finish()
+            } catch (e: Exception) {
+                val errorMessage = e.message ?: "Unknown error"
+                binding.statusText.text = getString(R.string.status_otp_failed, errorMessage)
+                Toast.makeText(this@VerifyPhoneActivity, errorMessage, Toast.LENGTH_LONG).show()
+            } finally {
+                busy = false
+                refreshActionState()
+            }
+        }
+    }
+
+    private fun continueWithoutOtp() {
+        val phone = binding.userPhoneInput.text?.toString()?.trim().orEmpty()
+        referralCode = binding.referralCodeInput.text?.toString()?.trim().orEmpty()
+        if (phone.isBlank()) {
+            binding.userPhoneInputLayout.error = getString(R.string.error_enter_user_phone)
+            Toast.makeText(this, getString(R.string.error_enter_user_phone), Toast.LENGTH_SHORT).show()
+            return
+        }
+
+        val tenantQrToken = getTenantQrTokenOrShowError() ?: return
+        val deviceId = obtainDeviceId()
+        busy = true
+        refreshActionState()
+        binding.statusText.text = getString(R.string.status_registering_user)
+
+        lifecycleScope.launch {
+            try {
+                val registered = withContext(Dispatchers.IO) {
+                    syncService.registerVerifiedUser(
+                        baseUrl = BuildConfig.APP_BASE_URL,
+                        tenantQrToken = tenantQrToken,
+                        phone = phone,
+                        deviceId = deviceId,
+                        referralCode = referralCode
                     )
                 }
 
@@ -215,9 +317,30 @@ class VerifyPhoneActivity : AppCompatActivity() {
     private fun refreshActionState() {
         val hasPhone = binding.userPhoneInput.text?.toString()?.trim().orEmpty().isNotBlank()
         val hasOtp = binding.otpCodeInput.text?.toString()?.trim().orEmpty().isNotBlank()
-        binding.sendOtpButton.isEnabled = hasPhone && !busy && remainingCooldownMs() <= 0
-        binding.verifyOtpButton.isEnabled = hasPhone && hasOtp && !busy
+        binding.sendOtpButton.isEnabled = otpEnabled && hasPhone && !busy && remainingCooldownMs() <= 0
+        binding.verifyOtpButton.isEnabled = if (otpEnabled) {
+            hasPhone && hasOtp && !busy
+        } else {
+            hasPhone && !busy
+        }
         binding.progressBar.visibility = if (busy) View.VISIBLE else View.GONE
+    }
+
+    private fun configureOtpUi() {
+        if (otpEnabled) {
+            binding.verifyPhoneIntroText.text = getString(R.string.verify_phone_intro)
+            binding.sendOtpButton.visibility = View.VISIBLE
+            binding.cooldownText.visibility = View.VISIBLE
+            binding.otpCodeInputLayout.visibility = View.VISIBLE
+            binding.verifyOtpButton.text = getString(R.string.verify_otp)
+            return
+        }
+
+        binding.verifyPhoneIntroText.text = getString(R.string.verify_phone_intro_no_otp)
+        binding.sendOtpButton.visibility = View.GONE
+        binding.cooldownText.visibility = View.GONE
+        binding.otpCodeInputLayout.visibility = View.GONE
+        binding.verifyOtpButton.text = getString(R.string.continue_without_otp)
     }
 
     private fun startCooldownIfNeeded() {
@@ -286,6 +409,13 @@ class VerifyPhoneActivity : AppCompatActivity() {
                 tenantLaunchManager.updateTenantName(
                     bootstrap.tenantName.ifBlank { bootstrap.appDisplayName }
                 )
+                val resolvedReferralCode = referralCode.ifBlank {
+                    bootstrap.tenantName.ifBlank { bootstrap.appDisplayName.ifBlank { bootstrap.tenantCode } }
+                }
+                if (resolvedReferralCode.isNotBlank()) {
+                    tenantLaunchManager.updateReferralCode(resolvedReferralCode)
+                    applyReferralCode(resolvedReferralCode, lockField = true)
+                }
                 if (binding.statusText.text.isNullOrBlank()) {
                     binding.statusText.text = getString(
                         R.string.status_tenant_selected,
@@ -300,17 +430,56 @@ class VerifyPhoneActivity : AppCompatActivity() {
 
     private fun getTenantQrTokenOrShowError(): String? {
         val token = qrToken.ifBlank { tenantLaunchManager.getContext().qrToken }
-        if (token.isBlank()) {
+        val currentReferralCode = binding.referralCodeInput.text?.toString()?.trim().orEmpty()
+        if (token.isBlank() && currentReferralCode.isBlank()) {
             binding.statusText.text = getString(R.string.status_missing_tenant_qr)
-            Toast.makeText(this, getString(R.string.toast_missing_tenant_qr), Toast.LENGTH_LONG).show()
+            showMissingTenantQrDialog()
             return null
         }
         return token
     }
 
+    private fun showMissingTenantQrDialog() {
+        MaterialAlertDialogBuilder(this)
+            .setTitle(R.string.missing_tenant_qr_title)
+            .setMessage(R.string.missing_tenant_qr_message)
+            .setPositiveButton(R.string.missing_tenant_qr_button, null)
+            .show()
+    }
+
     private fun obtainDeviceId(): String {
         val deviceId = Settings.Secure.getString(contentResolver, Settings.Secure.ANDROID_ID)
         return if (deviceId.isNullOrBlank()) "unknown_device" else deviceId
+    }
+
+    private fun dpToPx(value: Int): Int {
+        return TypedValue.applyDimension(
+            TypedValue.COMPLEX_UNIT_DIP,
+            value.toFloat(),
+            resources.displayMetrics
+        ).toInt()
+    }
+
+    private fun applyReferralCode(code: String, lockField: Boolean) {
+        val normalizedCode = code.trim()
+        if (normalizedCode.isBlank()) {
+            return
+        }
+
+        referralCode = normalizedCode
+        if (binding.referralCodeInput.text?.toString()?.trim().orEmpty() != normalizedCode) {
+            binding.referralCodeInput.setText(normalizedCode)
+        }
+        setReferralFieldLocked(lockField)
+    }
+
+    private fun setReferralFieldLocked(locked: Boolean) {
+        referralCodeLocked = locked
+        binding.referralCodeInput.keyListener = if (locked) null else editableReferralKeyListener
+        binding.referralCodeInput.isFocusable = !locked
+        binding.referralCodeInput.isFocusableInTouchMode = !locked
+        binding.referralCodeInput.isCursorVisible = !locked
+        binding.referralCodeInput.isLongClickable = !locked
     }
 
 }

@@ -42,6 +42,12 @@ class TenantLaunchManager(context: Context) {
             .apply()
     }
 
+    fun updateReferralCode(referralCode: String) {
+        prefs.edit()
+            .putString(KEY_REFERRAL_CODE, referralCode.trim())
+            .apply()
+    }
+
     fun updateTenantName(tenantName: String) {
         prefs.edit()
             .putString(KEY_TENANT_NAME, tenantName.trim())

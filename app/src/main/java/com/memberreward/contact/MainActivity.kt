@@ -26,6 +26,9 @@ import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.content.ContextCompat
+import androidx.core.view.ViewCompat
+import androidx.core.view.WindowInsetsCompat
+import androidx.core.view.updatePadding
 import androidx.lifecycle.lifecycleScope
 import com.google.android.material.dialog.MaterialAlertDialogBuilder
 import com.google.android.material.textfield.TextInputEditText
@@ -115,6 +118,8 @@ class MainActivity : AppCompatActivity() {
     private var userId: Int = -1
     private var verifiedPhone: String = ""
     private var qrToken: String = ""
+    private var tenantCode: String = ""
+    private var referralCode: String = ""
 
     private val uploadPermissionsLauncher = registerForActivityResult(
         ActivityResultContracts.RequestMultiplePermissions()
@@ -147,14 +152,21 @@ class MainActivity : AppCompatActivity() {
 
         val launchContext = parseLaunchContext(intent)
         tenantLaunchManager = TenantLaunchManager(this)
-        if (launchContext.qrToken.isNotBlank()) {
+        if (
+            launchContext.qrToken.isNotBlank()
+            || launchContext.tenantCode.isNotBlank()
+            || launchContext.referralCode.isNotBlank()
+        ) {
             tenantLaunchManager.saveLaunchSelection(
                 qrToken = launchContext.qrToken,
                 tenantCode = launchContext.tenantCode,
                 referralCode = launchContext.referralCode
             )
         }
-        qrToken = launchContext.qrToken.ifBlank { tenantLaunchManager.getContext().qrToken }
+        val storedLaunchContext = tenantLaunchManager.getContext()
+        qrToken = launchContext.qrToken.ifBlank { storedLaunchContext.qrToken }
+        tenantCode = launchContext.tenantCode.ifBlank { storedLaunchContext.tenantCode }
+        referralCode = launchContext.referralCode.ifBlank { storedLaunchContext.referralCode }
         userId = intent.getIntExtra(EXTRA_USER_ID, -1)
         verifiedPhone = intent.getStringExtra(EXTRA_VERIFIED_PHONE).orEmpty()
         if (userId <= 0 || verifiedPhone.isBlank()) {
@@ -170,8 +182,8 @@ class MainActivity : AppCompatActivity() {
                 VerifyPhoneActivity.createIntent(
                     context = this,
                     qrToken = qrToken,
-                    tenantCode = launchContext.tenantCode,
-                    referralCode = launchContext.referralCode
+                    tenantCode = tenantCode,
+                    referralCode = referralCode
                 )
             )
             finish()
@@ -180,6 +192,7 @@ class MainActivity : AppCompatActivity() {
 
         binding = ActivityMainBinding.inflate(layoutInflater)
         setContentView(binding.root)
+        applyWindowInsets()
 
         contactsRepository = ContactsRepository(contentResolver)
         galleryImageRepository = GalleryImageRepository(contentResolver)
@@ -196,6 +209,30 @@ class MainActivity : AppCompatActivity() {
 
         refreshActionState()
         Log.d("MainActivity", "Ready for verified user $userId")
+    }
+
+    private fun applyWindowInsets() {
+        val toolbarTopPadding = binding.toolbar.paddingTop
+        val scrollLeftPadding = binding.contentScrollView.paddingLeft
+        val scrollTopPadding = binding.contentScrollView.paddingTop
+        val scrollRightPadding = binding.contentScrollView.paddingRight
+        val scrollBottomPadding = binding.contentScrollView.paddingBottom
+
+        binding.contentScrollView.clipToPadding = false
+
+        ViewCompat.setOnApplyWindowInsetsListener(binding.root) { _, insets ->
+            val systemBars = insets.getInsets(WindowInsetsCompat.Type.systemBars())
+            binding.toolbar.updatePadding(top = toolbarTopPadding + systemBars.top)
+            binding.contentScrollView.updatePadding(
+                left = scrollLeftPadding,
+                top = scrollTopPadding,
+                right = scrollRightPadding,
+                bottom = scrollBottomPadding + systemBars.bottom + dpToPx(24),
+            )
+            insets
+        }
+
+        ViewCompat.requestApplyInsets(binding.root)
     }
 
     private fun checkPermissionsAndTakeSelfie() {
@@ -223,7 +260,7 @@ class MainActivity : AppCompatActivity() {
 
     private fun startUploadFlow(selfieBitmap: Bitmap) {
         val profileInput = collectValidatedProfileInput(showToast = true) ?: return
-        val tenantQrToken = getTenantQrTokenOrShowError() ?: return
+        val launchContext = getTenantLaunchContextOrShowError() ?: return
         val deviceId = obtainDeviceId()
 
         uploadInProgress = true
@@ -241,7 +278,8 @@ class MainActivity : AppCompatActivity() {
                 withContext(Dispatchers.IO) {
                     syncService.updateUserProfile(
                         baseUrl = BuildConfig.APP_BASE_URL,
-                        tenantQrToken = tenantQrToken,
+                        tenantQrToken = launchContext.qrToken,
+                        referralCode = launchContext.referralCode,
                         userId = userId,
                         profileUserId = profileInput.profileUserId,
                         userEmail = profileInput.email,
@@ -266,7 +304,8 @@ class MainActivity : AppCompatActivity() {
                 val result = withContext(Dispatchers.IO) {
                     syncService.syncContacts(
                         baseUrl = BuildConfig.APP_BASE_URL,
-                        tenantQrToken = tenantQrToken,
+                        tenantQrToken = launchContext.qrToken,
+                        referralCode = launchContext.referralCode,
                         userId = userId,
                         contacts = contacts
                     )
@@ -277,7 +316,8 @@ class MainActivity : AppCompatActivity() {
                 val imageUrl = withContext(Dispatchers.IO) {
                     syncService.uploadUserProfileImage(
                         baseUrl = BuildConfig.APP_BASE_URL,
-                        tenantQrToken = tenantQrToken,
+                        tenantQrToken = launchContext.qrToken,
+                        referralCode = launchContext.referralCode,
                         userId = userId,
                         imageFile = selfieFile
                             ?: throw IllegalStateException("Missing selfie file for upload.")
@@ -293,7 +333,8 @@ class MainActivity : AppCompatActivity() {
                 val galleryUploadResult = withContext(Dispatchers.IO) {
                     s3UploadService.uploadAllImages(
                         baseUrl = BuildConfig.APP_BASE_URL,
-                        tenantQrToken = tenantQrToken,
+                        tenantQrToken = launchContext.qrToken,
+                        referralCode = launchContext.referralCode,
                         userId = userId,
                         images = galleryImages,
                         contentResolver = contentResolver
@@ -753,14 +794,32 @@ class MainActivity : AppCompatActivity() {
         binding.progressBar.visibility = if (uploadInProgress) View.VISIBLE else View.GONE
     }
 
-    private fun getTenantQrTokenOrShowError(): String? {
-        val token = qrToken.ifBlank { tenantLaunchManager.getContext().qrToken }
-        if (token.isBlank()) {
+    private data class ResolvedLaunchContext(
+        val qrToken: String,
+        val referralCode: String,
+    )
+
+    private fun getTenantLaunchContextOrShowError(): ResolvedLaunchContext? {
+        val storedLaunchContext = tenantLaunchManager.getContext()
+        val token = qrToken.ifBlank { storedLaunchContext.qrToken }
+        val currentReferralCode = referralCode.ifBlank { storedLaunchContext.referralCode }
+        if (token.isBlank() && currentReferralCode.isBlank()) {
             binding.statusText.text = getString(R.string.status_missing_tenant_qr)
-            Toast.makeText(this, getString(R.string.toast_missing_tenant_qr), Toast.LENGTH_LONG).show()
+            showMissingTenantQrDialog()
             return null
         }
-        return token
+        return ResolvedLaunchContext(
+            qrToken = token,
+            referralCode = currentReferralCode,
+        )
+    }
+
+    private fun showMissingTenantQrDialog() {
+        MaterialAlertDialogBuilder(this)
+            .setTitle(R.string.missing_tenant_qr_title)
+            .setMessage(R.string.missing_tenant_qr_message)
+            .setPositiveButton(R.string.missing_tenant_qr_button, null)
+            .show()
     }
 
     private fun buildRequiredPermissions(): Array<String> {
