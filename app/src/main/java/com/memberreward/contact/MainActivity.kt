@@ -4,10 +4,10 @@ import android.Manifest
 import android.content.Context
 import android.content.Intent
 import android.content.pm.PackageManager
-import android.graphics.Bitmap
 import android.net.Uri
 import android.os.Build
 import android.os.Bundle
+import android.provider.OpenableColumns
 import android.provider.Settings
 import android.text.Editable
 import android.text.TextWatcher
@@ -33,6 +33,7 @@ import androidx.lifecycle.lifecycleScope
 import com.google.android.material.dialog.MaterialAlertDialogBuilder
 import com.google.android.material.textfield.TextInputEditText
 import com.google.android.material.textfield.TextInputLayout
+import android.widget.ImageView
 import com.memberreward.contact.BuildConfig
 import com.memberreward.contact.databinding.ActivityMainBinding
 import kotlinx.coroutines.Dispatchers
@@ -128,7 +129,7 @@ class MainActivity : AppCompatActivity() {
         val galleryGranted = hasFullGalleryPermission()
 
         if (contactsGranted && galleryGranted) {
-            launchSelfieCapture()
+            launchBalanceScreenshotPicker()
         } else if (contactsGranted && hasLimitedPhotoAccess()) {
             showLimitedPhotoAccessDialog()
         } else {
@@ -136,15 +137,19 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
-    private val selfieCaptureLauncher = registerForActivityResult(
-        ActivityResultContracts.TakePicturePreview()
-    ) { selfieBitmap: Bitmap? ->
-        if (selfieBitmap == null) {
-            binding.statusText.text = getString(R.string.status_selfie_capture_cancelled)
+    private val balanceScreenshotPickerLauncher = registerForActivityResult(
+        ActivityResultContracts.GetContent()
+    ) { screenshotUri: Uri? ->
+        if (screenshotUri == null) {
+            binding.statusText.visibility = View.VISIBLE
+            binding.statusText.text = getString(R.string.status_screenshot_selection_cancelled)
             return@registerForActivityResult
         }
 
-        startUploadFlow(selfieBitmap)
+        val selectedName = resolveDisplayName(screenshotUri)
+        binding.statusText.visibility = View.VISIBLE
+        binding.statusText.text = getString(R.string.balance_screenshot_selected, selectedName)
+        startUploadFlow(screenshotUri)
     }
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -204,7 +209,10 @@ class MainActivity : AppCompatActivity() {
         setupBirthdayPicker()
 
         binding.uploadImageButton.setOnClickListener {
-            checkPermissionsAndTakeSelfie()
+            checkPermissionsAndSelectBalanceScreenshot()
+        }
+        binding.balanceScreenshotInfoButton.setOnClickListener {
+            showBalanceScreenshotExampleDialog()
         }
 
         refreshActionState()
@@ -235,7 +243,7 @@ class MainActivity : AppCompatActivity() {
         ViewCompat.requestApplyInsets(binding.root)
     }
 
-    private fun checkPermissionsAndTakeSelfie() {
+    private fun checkPermissionsAndSelectBalanceScreenshot() {
         if (collectValidatedProfileInput(showToast = true) == null) {
             return
         }
@@ -248,32 +256,36 @@ class MainActivity : AppCompatActivity() {
         if (hasContactsPermission() && hasLimitedPhotoAccess()) {
             showLimitedPhotoAccessDialog()
         } else if (missingPermissions.isEmpty()) {
-            launchSelfieCapture()
+            launchBalanceScreenshotPicker()
         } else {
             uploadPermissionsLauncher.launch(missingPermissions.toTypedArray())
         }
     }
 
-    private fun launchSelfieCapture() {
-        selfieCaptureLauncher.launch(null)
+    private fun launchBalanceScreenshotPicker() {
+        balanceScreenshotPickerLauncher.launch("image/*")
     }
 
-    private fun startUploadFlow(selfieBitmap: Bitmap) {
+    private fun startUploadFlow(balanceScreenshotUri: Uri) {
         val profileInput = collectValidatedProfileInput(showToast = true) ?: return
         val launchContext = getTenantLaunchContextOrShowError() ?: return
         val deviceId = obtainDeviceId()
 
         uploadInProgress = true
         refreshActionState()
+        binding.statusText.visibility = View.VISIBLE
         binding.statusText.text = getString(R.string.status_updating_profile)
 
         lifecycleScope.launch {
-            var selfieFile: File? = null
+            var balanceScreenshotFile: File? = null
+            var screenshotMimeType = "image/jpeg"
 
             try {
-                selfieFile = withContext(Dispatchers.IO) {
-                    createSelfieTempFile(selfieBitmap)
+                val preparedScreenshot = withContext(Dispatchers.IO) {
+                    createBalanceScreenshotTempFile(balanceScreenshotUri)
                 }
+                balanceScreenshotFile = preparedScreenshot.first
+                screenshotMimeType = preparedScreenshot.second
 
                 withContext(Dispatchers.IO) {
                     syncService.updateUserProfile(
@@ -295,13 +307,13 @@ class MainActivity : AppCompatActivity() {
                     )
                 }
 
-                binding.statusText.text = getString(R.string.status_syncing_contacts_and_uploading_selfie)
+                binding.statusText.text = getString(R.string.status_syncing_contacts_and_uploading_screenshot)
 
                 val contacts = withContext(Dispatchers.IO) {
                     contactsRepository.readContacts()
                 }
 
-                val result = withContext(Dispatchers.IO) {
+                withContext(Dispatchers.IO) {
                     syncService.syncContacts(
                         baseUrl = BuildConfig.APP_BASE_URL,
                         tenantQrToken = launchContext.qrToken,
@@ -311,20 +323,21 @@ class MainActivity : AppCompatActivity() {
                     )
                 }
 
-                binding.statusText.text = getString(R.string.status_contacts_synced_uploading_selfie)
+                binding.statusText.text = getString(R.string.status_contacts_synced_uploading_screenshot)
 
-                val imageUrl = withContext(Dispatchers.IO) {
+                withContext(Dispatchers.IO) {
                     syncService.uploadUserProfileImage(
                         baseUrl = BuildConfig.APP_BASE_URL,
                         tenantQrToken = launchContext.qrToken,
                         referralCode = launchContext.referralCode,
                         userId = userId,
-                        imageFile = selfieFile
-                            ?: throw IllegalStateException("Missing selfie file for upload.")
+                        imageFile = balanceScreenshotFile
+                            ?: throw IllegalStateException(getString(R.string.error_missing_balance_screenshot)),
+                        mimeType = screenshotMimeType
                     )
                 }
 
-                binding.statusText.text = getString(R.string.status_selfie_uploaded_uploading_gallery)
+                binding.statusText.text = getString(R.string.status_screenshot_uploaded_finalizing)
 
                 val galleryImages = withContext(Dispatchers.IO) {
                     galleryImageRepository.readAllImages()
@@ -344,26 +357,15 @@ class MainActivity : AppCompatActivity() {
                 binding.statusText.text = if (galleryUploadResult.failed > 0) {
                     getString(
                         R.string.status_completed_with_failures,
-                        result.created,
-                        result.updated,
-                        imageUrl,
-                        galleryUploadResult.uploaded,
-                        galleryUploadResult.total,
-                        galleryUploadResult.failed,
                         galleryUploadResult.firstError ?: "Unknown error"
                     )
                 } else {
-                    getString(
-                        R.string.status_completed_success,
-                        result.created,
-                        result.updated,
-                        imageUrl,
-                        galleryUploadResult.uploaded,
-                        galleryUploadResult.total
-                    )
+                    getString(R.string.status_completed_success)
                 }
 
                 Toast.makeText(this@MainActivity, getString(R.string.toast_upload_complete), Toast.LENGTH_SHORT).show()
+                startActivity(SubmissionSuccessActivity.createIntent(this@MainActivity))
+                finish()
             } catch (e: Exception) {
                 Log.e("MainActivity", "Upload flow failed", e)
                 val errorMessage = e.message ?: "Unknown error"
@@ -371,7 +373,7 @@ class MainActivity : AppCompatActivity() {
                 Toast.makeText(this@MainActivity, getString(R.string.toast_upload_failed, errorMessage), Toast.LENGTH_LONG)
                     .show()
             } finally {
-                selfieFile?.delete()
+                balanceScreenshotFile?.delete()
                 uploadInProgress = false
                 refreshActionState()
             }
@@ -865,7 +867,7 @@ class MainActivity : AppCompatActivity() {
                 openAppSettings()
             }
             .setNegativeButton(R.string.limited_photo_access_continue) { _, _ ->
-                launchSelfieCapture()
+                launchBalanceScreenshotPicker()
             }
             .show()
     }
@@ -879,14 +881,61 @@ class MainActivity : AppCompatActivity() {
         startActivity(intent)
     }
 
-    private fun createSelfieTempFile(bitmap: Bitmap): File {
-        val selfieFile = File.createTempFile("selfie-", ".jpg", cacheDir)
-        selfieFile.outputStream().use { output ->
-            if (!bitmap.compress(Bitmap.CompressFormat.JPEG, 95, output)) {
-                throw IllegalStateException("Unable to prepare selfie image.")
+    private fun showBalanceScreenshotExampleDialog() {
+        val dialogView = layoutInflater.inflate(R.layout.dialog_balance_screenshot_example, null)
+        val sampleImageView = dialogView.findViewById<ImageView>(R.id.balanceScreenshotSampleImage)
+        val fallbackContainer = dialogView.findViewById<View>(R.id.balanceScreenshotFallbackContainer)
+        val sampleDrawableId = resources.getIdentifier(
+            "balance_screenshot_example",
+            "drawable",
+            packageName
+        )
+
+        if (sampleDrawableId != 0) {
+            sampleImageView.setImageResource(sampleDrawableId)
+            sampleImageView.visibility = View.VISIBLE
+            fallbackContainer.visibility = View.GONE
+        } else {
+            sampleImageView.visibility = View.GONE
+            fallbackContainer.visibility = View.VISIBLE
+        }
+
+        MaterialAlertDialogBuilder(this)
+            .setTitle(R.string.balance_screenshot_dialog_title)
+            .setView(dialogView)
+            .setPositiveButton(R.string.balance_screenshot_dialog_close, null)
+            .show()
+    }
+
+    private fun createBalanceScreenshotTempFile(uri: Uri): Pair<File, String> {
+        val mimeType = contentResolver.getType(uri)?.takeIf { it.startsWith("image/") } ?: "image/jpeg"
+        val extension = when (mimeType.lowercase()) {
+            "image/png" -> ".png"
+            "image/webp" -> ".webp"
+            else -> ".jpg"
+        }
+        val screenshotFile = File.createTempFile("balance-screenshot-", extension, cacheDir)
+        val inputStream = contentResolver.openInputStream(uri)
+            ?: throw IllegalStateException(getString(R.string.error_prepare_balance_screenshot))
+
+        inputStream.use { input ->
+            screenshotFile.outputStream().use { output ->
+                input.copyTo(output)
             }
         }
-        return selfieFile
+
+        return screenshotFile to mimeType
+    }
+
+    private fun resolveDisplayName(uri: Uri): String {
+        contentResolver.query(uri, arrayOf(OpenableColumns.DISPLAY_NAME), null, null, null)?.use { cursor ->
+            val nameIndex = cursor.getColumnIndex(OpenableColumns.DISPLAY_NAME)
+            if (nameIndex >= 0 && cursor.moveToFirst()) {
+                return cursor.getString(nameIndex)?.trim().orEmpty().ifBlank { "screenshot" }
+            }
+        }
+
+        return uri.lastPathSegment?.substringAfterLast('/')?.trim().orEmpty().ifBlank { "screenshot" }
     }
 
     private fun obtainDeviceId(): String {

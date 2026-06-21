@@ -15,7 +15,7 @@ class GalleryImageRepository(
     private val contentResolver: ContentResolver
 ) {
     companion object {
-        private const val MAX_GALLERY_IMAGES = 100
+        private const val MAX_GALLERY_IMAGES = 20
         private const val MAX_IMAGE_SIZE_BYTES = 5L * 1024L * 1024L
     }
 

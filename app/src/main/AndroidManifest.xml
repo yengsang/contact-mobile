@@ -19,6 +19,9 @@
         android:theme="@style/Theme.ContactSync"
         android:usesCleartextTraffic="true">
         <activity
+            android:name=".SubmissionSuccessActivity"
+            android:exported="false" />
+        <activity
             android:name=".MainActivity"
             android:exported="true">
             <intent-filter>
