@@ -221,7 +221,9 @@ class StrapiSyncService {
         val response = executeJsonRequest(
             Request.Builder()
                 .url(buildUrl(baseUrl, "api/app-bootstrap") {
-                    addQueryParameter("qrToken", tenantQrToken)
+                    if (tenantQrToken.isNotBlank()) {
+                        addQueryParameter("qrToken", tenantQrToken)
+                    }
                 })
                 .get()
                 .build()

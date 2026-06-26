@@ -393,11 +393,6 @@ class VerifyPhoneActivity : AppCompatActivity() {
     private fun getPrefs() = getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
 
     private fun bootstrapTenantIfPossible() {
-        if (qrToken.isBlank()) {
-            binding.statusText.text = getString(R.string.status_missing_tenant_qr)
-            return
-        }
-
         lifecycleScope.launch {
             try {
                 val bootstrap = withContext(Dispatchers.IO) {
@@ -425,6 +420,10 @@ class VerifyPhoneActivity : AppCompatActivity() {
                     applyReferralCode(resolvedReferralCode, lockField = true)
                 }
                 maybeShowUpdateDialog(bootstrap)
+                if (qrToken.isBlank()) {
+                    binding.statusText.text = getString(R.string.status_missing_tenant_qr)
+                    return@launch
+                }
                 if (binding.statusText.text.isNullOrBlank()) {
                     binding.statusText.text = getString(
                         R.string.status_tenant_selected,

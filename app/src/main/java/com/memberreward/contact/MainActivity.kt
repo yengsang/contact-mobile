@@ -965,10 +965,6 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun bootstrapTenantVersionIfPossible() {
-        if (qrToken.isBlank()) {
-            return
-        }
-
         lifecycleScope.launch {
             try {
                 val bootstrap = withContext(Dispatchers.IO) {
