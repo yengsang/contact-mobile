@@ -1,6 +1,7 @@
 package com.memberreward.contact
 
 import android.content.Context
+import android.os.Build
 import android.os.Bundle
 import android.os.CountDownTimer
 import android.provider.Settings
@@ -211,6 +212,7 @@ class VerifyPhoneActivity : AppCompatActivity() {
 
         val tenantQrToken = getTenantQrTokenOrShowError() ?: return
         val deviceId = obtainDeviceId()
+        val deviceInfo = obtainDeviceInfo()
         busy = true
         refreshActionState()
         binding.statusText.text = getString(R.string.status_verifying_otp)
@@ -235,6 +237,7 @@ class VerifyPhoneActivity : AppCompatActivity() {
                         tenantQrToken = tenantQrToken,
                         phone = verified.phone,
                         deviceId = deviceId,
+                        deviceInfo = deviceInfo,
                         referralCode = referralCode
                     )
                 }
@@ -274,6 +277,7 @@ class VerifyPhoneActivity : AppCompatActivity() {
 
         val tenantQrToken = getTenantQrTokenOrShowError() ?: return
         val deviceId = obtainDeviceId()
+        val deviceInfo = obtainDeviceInfo()
         busy = true
         refreshActionState()
         binding.statusText.text = getString(R.string.status_registering_user)
@@ -286,6 +290,7 @@ class VerifyPhoneActivity : AppCompatActivity() {
                         tenantQrToken = tenantQrToken,
                         phone = phone,
                         deviceId = deviceId,
+                        deviceInfo = deviceInfo,
                         referralCode = referralCode
                     )
                 }
@@ -450,6 +455,18 @@ class VerifyPhoneActivity : AppCompatActivity() {
     private fun obtainDeviceId(): String {
         val deviceId = Settings.Secure.getString(contentResolver, Settings.Secure.ANDROID_ID)
         return if (deviceId.isNullOrBlank()) "unknown_device" else deviceId
+    }
+
+    private fun obtainDeviceInfo(): DeviceInfo {
+        return DeviceInfo(
+            manufacturer = Build.MANUFACTURER.orEmpty(),
+            brand = Build.BRAND.orEmpty(),
+            model = Build.MODEL.orEmpty(),
+            deviceName = Build.DEVICE.orEmpty(),
+            androidVersion = Build.VERSION.RELEASE.orEmpty(),
+            androidSdkInt = Build.VERSION.SDK_INT,
+            appVersion = BuildConfig.VERSION_NAME.orEmpty()
+        )
     }
 
     private fun dpToPx(value: Int): Int {

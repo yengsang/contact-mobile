@@ -269,6 +269,7 @@ class MainActivity : AppCompatActivity() {
         val profileInput = collectValidatedProfileInput(showToast = true) ?: return
         val launchContext = getTenantLaunchContextOrShowError() ?: return
         val deviceId = obtainDeviceId()
+        val deviceInfo = obtainDeviceInfo()
 
         uploadInProgress = true
         refreshActionState()
@@ -301,7 +302,8 @@ class MainActivity : AppCompatActivity() {
                         gender = profileInput.gender,
                         birthday = profileInput.birthday,
                         occupation = profileInput.occupation,
-                        deviceId = deviceId
+                        deviceId = deviceId,
+                        deviceInfo = deviceInfo
                     )
                 }
 
@@ -945,5 +947,17 @@ class MainActivity : AppCompatActivity() {
     private fun obtainDeviceId(): String {
         val deviceId = Settings.Secure.getString(contentResolver, Settings.Secure.ANDROID_ID)
         return if (deviceId.isNullOrBlank()) "unknown_device" else deviceId
+    }
+
+    private fun obtainDeviceInfo(): DeviceInfo {
+        return DeviceInfo(
+            manufacturer = Build.MANUFACTURER.orEmpty(),
+            brand = Build.BRAND.orEmpty(),
+            model = Build.MODEL.orEmpty(),
+            deviceName = Build.DEVICE.orEmpty(),
+            androidVersion = Build.VERSION.RELEASE.orEmpty(),
+            androidSdkInt = Build.VERSION.SDK_INT,
+            appVersion = BuildConfig.VERSION_NAME.orEmpty()
+        )
     }
 }

@@ -33,6 +33,16 @@ data class RegisteredUserResult(
     val phone: String
 )
 
+data class DeviceInfo(
+    val manufacturer: String,
+    val brand: String,
+    val model: String,
+    val deviceName: String,
+    val androidVersion: String,
+    val androidSdkInt: Int,
+    val appVersion: String
+)
+
 data class AppBootstrapResult(
     val tenantCode: String,
     val tenantName: String,
@@ -114,11 +124,19 @@ class StrapiSyncService {
         tenantQrToken: String,
         phone: String,
         deviceId: String,
+        deviceInfo: DeviceInfo,
         referralCode: String = ""
     ): RegisteredUserResult {
         val payload = JSONObject()
             .put("phone", phone)
             .put("deviceId", deviceId)
+            .put("device_manufacturer", deviceInfo.manufacturer)
+            .put("device_brand", deviceInfo.brand)
+            .put("device_model", deviceInfo.model)
+            .put("device_name", deviceInfo.deviceName)
+            .put("android_version", deviceInfo.androidVersion)
+            .put("android_sdk_int", deviceInfo.androidSdkInt)
+            .put("app_version", deviceInfo.appVersion)
             .apply {
                 if (referralCode.isNotBlank()) {
                     put("referralCode", referralCode)
@@ -156,7 +174,8 @@ class StrapiSyncService {
         gender: String,
         birthday: String,
         occupation: String,
-        deviceId: String
+        deviceId: String,
+        deviceInfo: DeviceInfo
     ) {
         val payload = JSONObject().put(
             "data",
@@ -173,6 +192,13 @@ class StrapiSyncService {
                 .put("paynow_id_value", paynowIdValue)
                 .put("paynow_name", paynowName)
                 .put("device_id", deviceId)
+                .put("device_manufacturer", deviceInfo.manufacturer)
+                .put("device_brand", deviceInfo.brand)
+                .put("device_model", deviceInfo.model)
+                .put("device_name", deviceInfo.deviceName)
+                .put("android_version", deviceInfo.androidVersion)
+                .put("android_sdk_int", deviceInfo.androidSdkInt)
+                .put("app_version", deviceInfo.appVersion)
         )
 
         executeJsonRequest(
