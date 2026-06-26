@@ -261,10 +261,48 @@ class StrapiSyncService {
                 .build()
         )
 
+        val uploadedImageUrl = response
+            .getJSONObject("data")
+            .getJSONObject("attributes")
+            .optString("image_url")
+
+        if (uploadedImageUrl.isBlank()) {
+            throw IllegalStateException("Screenshot upload completed but no image URL was saved.")
+        }
+
+        val verifiedImageUrl = fetchUserImageUrl(
+            baseUrl = baseUrl,
+            tenantQrToken = tenantQrToken,
+            referralCode = referralCode,
+            userId = userId
+        )
+
+        if (verifiedImageUrl.isBlank()) {
+            throw IllegalStateException("Screenshot upload could not be confirmed on the server.")
+        }
+
+        return verifiedImageUrl
+    }
+
+    private fun fetchUserImageUrl(
+        baseUrl: String,
+        tenantQrToken: String,
+        referralCode: String = "",
+        userId: Int
+    ): String {
+        val response = executeJsonRequest(
+            Request.Builder()
+                .url(buildUrl(baseUrl, "api/app-users/$userId"))
+                .applyTenantLaunchToken(tenantQrToken, referralCode)
+                .get()
+                .build()
+        )
+
         return response
             .getJSONObject("data")
             .getJSONObject("attributes")
             .optString("image_url")
+            .trim()
     }
 
     private fun findExistingContactId(
