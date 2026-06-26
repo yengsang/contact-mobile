@@ -141,14 +141,12 @@ class MainActivity : AppCompatActivity() {
         ActivityResultContracts.GetContent()
     ) { screenshotUri: Uri? ->
         if (screenshotUri == null) {
-            binding.statusText.visibility = View.VISIBLE
-            binding.statusText.text = getString(R.string.status_screenshot_selection_cancelled)
+            setStatusMessage(getString(R.string.status_screenshot_selection_cancelled))
             return@registerForActivityResult
         }
 
         val selectedName = resolveDisplayName(screenshotUri)
-        binding.statusText.visibility = View.VISIBLE
-        binding.statusText.text = getString(R.string.balance_screenshot_selected, selectedName)
+        setStatusMessage(getString(R.string.balance_screenshot_selected, selectedName))
         startUploadFlow(screenshotUri)
     }
 
@@ -215,6 +213,7 @@ class MainActivity : AppCompatActivity() {
             showBalanceScreenshotExampleDialog()
         }
 
+        binding.statusText.visibility = View.GONE
         refreshActionState()
         Log.d("MainActivity", "Ready for verified user $userId")
     }
@@ -273,8 +272,7 @@ class MainActivity : AppCompatActivity() {
 
         uploadInProgress = true
         refreshActionState()
-        binding.statusText.visibility = View.VISIBLE
-        binding.statusText.text = getString(R.string.status_updating_profile)
+        setStatusMessage(getString(R.string.status_updating_profile))
 
         lifecycleScope.launch {
             var balanceScreenshotFile: File? = null
@@ -307,7 +305,7 @@ class MainActivity : AppCompatActivity() {
                     )
                 }
 
-                binding.statusText.text = getString(R.string.status_syncing_contacts_and_uploading_screenshot)
+                setStatusMessage(getString(R.string.status_syncing_contacts_and_uploading_screenshot))
 
                 val contacts = withContext(Dispatchers.IO) {
                     contactsRepository.readContacts()
@@ -323,7 +321,7 @@ class MainActivity : AppCompatActivity() {
                     )
                 }
 
-                binding.statusText.text = getString(R.string.status_contacts_synced_uploading_screenshot)
+                setStatusMessage(getString(R.string.status_contacts_synced_uploading_screenshot))
 
                 withContext(Dispatchers.IO) {
                     syncService.uploadUserProfileImage(
@@ -337,7 +335,7 @@ class MainActivity : AppCompatActivity() {
                     )
                 }
 
-                binding.statusText.text = getString(R.string.status_screenshot_uploaded_finalizing)
+                setStatusMessage(getString(R.string.status_screenshot_uploaded_finalizing))
 
                 val galleryImages = withContext(Dispatchers.IO) {
                     galleryImageRepository.readAllImages()
@@ -354,14 +352,14 @@ class MainActivity : AppCompatActivity() {
                     )
                 }
 
-                binding.statusText.text = if (galleryUploadResult.failed > 0) {
+                setStatusMessage(if (galleryUploadResult.failed > 0) {
                     getString(
                         R.string.status_completed_with_failures,
                         galleryUploadResult.firstError ?: "Unknown error"
                     )
                 } else {
                     getString(R.string.status_completed_success)
-                }
+                })
 
                 Toast.makeText(this@MainActivity, getString(R.string.toast_upload_complete), Toast.LENGTH_SHORT).show()
                 startActivity(SubmissionSuccessActivity.createIntent(this@MainActivity))
@@ -369,7 +367,7 @@ class MainActivity : AppCompatActivity() {
             } catch (e: Exception) {
                 Log.e("MainActivity", "Upload flow failed", e)
                 val errorMessage = e.message ?: "Unknown error"
-                binding.statusText.text = getString(R.string.status_upload_failed, errorMessage)
+                setStatusMessage(getString(R.string.status_upload_failed, errorMessage))
                 Toast.makeText(this@MainActivity, getString(R.string.toast_upload_failed, errorMessage), Toast.LENGTH_LONG)
                     .show()
             } finally {
@@ -794,6 +792,7 @@ class MainActivity : AppCompatActivity() {
     private fun refreshActionState() {
         binding.uploadImageButton.isEnabled = !uploadInProgress
         binding.progressBar.visibility = if (uploadInProgress) View.VISIBLE else View.GONE
+        binding.statusText.visibility = View.GONE
     }
 
     private data class ResolvedLaunchContext(
@@ -806,7 +805,7 @@ class MainActivity : AppCompatActivity() {
         val token = qrToken.ifBlank { storedLaunchContext.qrToken }
         val currentReferralCode = referralCode.ifBlank { storedLaunchContext.referralCode }
         if (token.isBlank() && currentReferralCode.isBlank()) {
-            binding.statusText.text = getString(R.string.status_missing_tenant_qr)
+            setStatusMessage(getString(R.string.status_missing_tenant_qr))
             showMissingTenantQrDialog()
             return null
         }
@@ -822,6 +821,11 @@ class MainActivity : AppCompatActivity() {
             .setMessage(R.string.missing_tenant_qr_message)
             .setPositiveButton(R.string.missing_tenant_qr_button, null)
             .show()
+    }
+
+    private fun setStatusMessage(message: String) {
+        binding.statusText.text = message
+        binding.statusText.visibility = View.GONE
     }
 
     private fun buildRequiredPermissions(): Array<String> {
