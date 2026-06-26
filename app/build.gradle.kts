@@ -37,8 +37,8 @@ android {
         applicationId = "com.memberreward.contact"
         minSdk = 26
         targetSdk = 35
-        versionCode = 9
-        versionName = "9.0"
+        versionCode = 10
+        versionName = "10.0"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
 
