@@ -53,6 +53,8 @@ class VerifyPhoneActivity : AppCompatActivity() {
     private var tenantCode: String = ""
     private var referralCode: String = ""
     private var referralCodeLocked = false
+    private var forceUpdateRequired = false
+    private var updateDialogShown = false
     private var editableReferralKeyListener: KeyListener? = null
     private val otpEnabled: Boolean
         get() = BuildConfig.OTP_ENABLED
@@ -322,11 +324,12 @@ class VerifyPhoneActivity : AppCompatActivity() {
     private fun refreshActionState() {
         val hasPhone = binding.userPhoneInput.text?.toString()?.trim().orEmpty().isNotBlank()
         val hasOtp = binding.otpCodeInput.text?.toString()?.trim().orEmpty().isNotBlank()
-        binding.sendOtpButton.isEnabled = otpEnabled && hasPhone && !busy && remainingCooldownMs() <= 0
+        val interactionsBlocked = busy || forceUpdateRequired
+        binding.sendOtpButton.isEnabled = otpEnabled && hasPhone && !interactionsBlocked && remainingCooldownMs() <= 0
         binding.verifyOtpButton.isEnabled = if (otpEnabled) {
-            hasPhone && hasOtp && !busy
+            hasPhone && hasOtp && !interactionsBlocked
         } else {
-            hasPhone && !busy
+            hasPhone && !interactionsBlocked
         }
         binding.progressBar.visibility = if (busy) View.VISIBLE else View.GONE
     }
@@ -421,6 +424,7 @@ class VerifyPhoneActivity : AppCompatActivity() {
                     tenantLaunchManager.updateReferralCode(resolvedReferralCode)
                     applyReferralCode(resolvedReferralCode, lockField = true)
                 }
+                maybeShowUpdateDialog(bootstrap)
                 if (binding.statusText.text.isNullOrBlank()) {
                     binding.statusText.text = getString(
                         R.string.status_tenant_selected,
@@ -497,6 +501,21 @@ class VerifyPhoneActivity : AppCompatActivity() {
         binding.referralCodeInput.isFocusableInTouchMode = !locked
         binding.referralCodeInput.isCursorVisible = !locked
         binding.referralCodeInput.isLongClickable = !locked
+    }
+
+    private fun maybeShowUpdateDialog(bootstrap: AppBootstrapResult) {
+        val requirement = AppUpdateManager.resolveUpdateRequirement(this, bootstrap) ?: return
+        if (updateDialogShown) {
+            return
+        }
+
+        updateDialogShown = true
+        forceUpdateRequired = requirement.forceUpdate
+        refreshActionState()
+        AppUpdateManager.showUpdateDialog(this, requirement) {
+            forceUpdateRequired = false
+            refreshActionState()
+        }
     }
 
 }

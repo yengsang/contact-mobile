@@ -47,6 +47,10 @@ data class AppBootstrapResult(
     val tenantCode: String,
     val tenantName: String,
     val appDisplayName: String,
+    val androidApkUrl: String,
+    val latestVersionCode: Int?,
+    val latestVersionName: String,
+    val forceUpdate: Boolean,
 )
 
 class StrapiSyncService {
@@ -227,7 +231,11 @@ class StrapiSyncService {
         return AppBootstrapResult(
             tenantCode = data.optString("tenantCode", ""),
             tenantName = data.optString("tenantName", ""),
-            appDisplayName = data.optString("appDisplayName", "")
+            appDisplayName = data.optString("appDisplayName", ""),
+            androidApkUrl = data.optString("androidApkUrl", "").trim(),
+            latestVersionCode = data.optInt("latestVersionCode").takeIf { it > 0 },
+            latestVersionName = data.optString("latestVersionName", "").trim(),
+            forceUpdate = data.optBoolean("forceUpdate", false)
         )
     }
 

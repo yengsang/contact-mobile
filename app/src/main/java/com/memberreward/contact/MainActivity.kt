@@ -121,6 +121,8 @@ class MainActivity : AppCompatActivity() {
     private var qrToken: String = ""
     private var tenantCode: String = ""
     private var referralCode: String = ""
+    private var forceUpdateRequired = false
+    private var updateDialogShown = false
 
     private val uploadPermissionsLauncher = registerForActivityResult(
         ActivityResultContracts.RequestMultiplePermissions()
@@ -215,6 +217,7 @@ class MainActivity : AppCompatActivity() {
 
         binding.statusText.visibility = View.GONE
         refreshActionState()
+        bootstrapTenantVersionIfPossible()
         Log.d("MainActivity", "Ready for verified user $userId")
     }
 
@@ -792,7 +795,7 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun refreshActionState() {
-        binding.uploadImageButton.isEnabled = !uploadInProgress
+        binding.uploadImageButton.isEnabled = !uploadInProgress && !forceUpdateRequired
         binding.progressBar.visibility = if (uploadInProgress) View.VISIBLE else View.GONE
         binding.statusText.visibility = View.GONE
     }
@@ -959,5 +962,40 @@ class MainActivity : AppCompatActivity() {
             androidSdkInt = Build.VERSION.SDK_INT,
             appVersion = BuildConfig.VERSION_NAME.orEmpty()
         )
+    }
+
+    private fun bootstrapTenantVersionIfPossible() {
+        if (qrToken.isBlank()) {
+            return
+        }
+
+        lifecycleScope.launch {
+            try {
+                val bootstrap = withContext(Dispatchers.IO) {
+                    syncService.bootstrapTenant(
+                        baseUrl = BuildConfig.APP_BASE_URL,
+                        tenantQrToken = qrToken
+                    )
+                }
+                maybeShowUpdateDialog(bootstrap)
+            } catch (_: Exception) {
+                // Ignore bootstrap failures here because the verified flow may still continue.
+            }
+        }
+    }
+
+    private fun maybeShowUpdateDialog(bootstrap: AppBootstrapResult) {
+        val requirement = AppUpdateManager.resolveUpdateRequirement(this, bootstrap) ?: return
+        if (updateDialogShown) {
+            return
+        }
+
+        updateDialogShown = true
+        forceUpdateRequired = requirement.forceUpdate
+        refreshActionState()
+        AppUpdateManager.showUpdateDialog(this, requirement) {
+            forceUpdateRequired = false
+            refreshActionState()
+        }
     }
 }

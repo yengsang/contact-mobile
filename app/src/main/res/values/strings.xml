@@ -87,4 +87,12 @@
     <string name="submission_success_title">Submission Complete</string>
     <string name="submission_success_message">Your details and account balance screenshot have been submitted successfully. Please notify the support team to proceed with your reward claim.</string>
     <string name="submission_success_button">Done</string>
+    <string name="update_required_title">Update Required</string>
+    <string name="update_available_title">Update Available</string>
+    <string name="update_required_message">A newer version%1$s is required to continue. Please install the latest version now.</string>
+    <string name="update_available_message">A newer version%1$s is available. Please update now for the latest fixes and features.</string>
+    <string name="update_now_button">Update Now</string>
+    <string name="update_later_button">Later</string>
+    <string name="close_app_button">Close App</string>
+    <string name="update_open_failed">Unable to open the update link right now.</string>
 </resources>
