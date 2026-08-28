@@ -162,6 +162,24 @@ class VerifyPhoneActivity : AppCompatActivity() {
         }
 
         val tenantQrToken = getTenantQrTokenOrShowError() ?: return
+        val traceId = AppTraceLogger.newTraceId("verify")
+        val deviceId = obtainDeviceId()
+        val deviceInfo = obtainDeviceInfo()
+        postDiagnosticEvent(
+            traceId = traceId,
+            flow = "verification",
+            step = "send_otp_started",
+            status = "info",
+            message = "User started OTP send request.",
+            phone = phone,
+            deviceId = deviceId,
+            appVersion = deviceInfo.appVersion,
+            context = mapOf(
+                "otpEnabled" to otpEnabled,
+                "qrTokenPresent" to tenantQrToken.isNotBlank(),
+                "referralCodePresent" to referralCode.isNotBlank()
+            )
+        )
         busy = true
         refreshActionState()
         binding.statusText.text = getString(R.string.status_sending_otp)
@@ -173,9 +191,20 @@ class VerifyPhoneActivity : AppCompatActivity() {
                         baseUrl = BuildConfig.APP_BASE_URL,
                         tenantQrToken = tenantQrToken,
                         phone = phone,
-                        referralCode = referralCode
+                        referralCode = referralCode,
+                        traceId = traceId
                     )
                 }
+                postDiagnosticEvent(
+                    traceId = traceId,
+                    flow = "verification",
+                    step = "send_otp_completed",
+                    status = "success",
+                    message = "OTP send request completed.",
+                    phone = result.phone,
+                    deviceId = deviceId,
+                    appVersion = deviceInfo.appVersion
+                )
 
                 setLastOtpSentAt(System.currentTimeMillis())
                 startCooldownIfNeeded()
@@ -215,6 +244,22 @@ class VerifyPhoneActivity : AppCompatActivity() {
         val tenantQrToken = getTenantQrTokenOrShowError() ?: return
         val deviceId = obtainDeviceId()
         val deviceInfo = obtainDeviceInfo()
+        val traceId = AppTraceLogger.newTraceId("verify")
+        postDiagnosticEvent(
+            traceId = traceId,
+            flow = "verification",
+            step = "verify_otp_started",
+            status = "info",
+            message = "User started OTP verification.",
+            phone = phone,
+            deviceId = deviceId,
+            appVersion = deviceInfo.appVersion,
+            context = mapOf(
+                "otpEnabled" to otpEnabled,
+                "qrTokenPresent" to tenantQrToken.isNotBlank(),
+                "referralCodePresent" to referralCode.isNotBlank()
+            )
+        )
         busy = true
         refreshActionState()
         binding.statusText.text = getString(R.string.status_verifying_otp)
@@ -227,7 +272,8 @@ class VerifyPhoneActivity : AppCompatActivity() {
                         tenantQrToken = tenantQrToken,
                         phone = phone,
                         code = code,
-                        referralCode = referralCode
+                        referralCode = referralCode,
+                        traceId = traceId
                     )
                 }
 
@@ -240,9 +286,21 @@ class VerifyPhoneActivity : AppCompatActivity() {
                         phone = verified.phone,
                         deviceId = deviceId,
                         deviceInfo = deviceInfo,
-                        referralCode = referralCode
+                        referralCode = referralCode,
+                        traceId = traceId
                     )
                 }
+                postDiagnosticEvent(
+                    traceId = traceId,
+                    flow = "verification",
+                    step = "register_user_completed",
+                    status = "success",
+                    message = "Verified user registration completed.",
+                    userId = registered.userId,
+                    phone = registered.phone,
+                    deviceId = deviceId,
+                    appVersion = deviceInfo.appVersion
+                )
 
                 binding.statusText.text = getString(R.string.status_phone_verified)
                 Toast.makeText(this@VerifyPhoneActivity, getString(R.string.toast_phone_verified), Toast.LENGTH_SHORT).show()
@@ -258,6 +316,16 @@ class VerifyPhoneActivity : AppCompatActivity() {
                 )
                 finish()
             } catch (e: Exception) {
+                postDiagnosticEvent(
+                    traceId = traceId,
+                    flow = "verification",
+                    step = "verify_otp_or_register_failed",
+                    status = "error",
+                    message = e.message ?: "Unknown OTP verification failure.",
+                    phone = phone,
+                    deviceId = deviceId,
+                    appVersion = deviceInfo.appVersion
+                )
                 val errorMessage = e.message ?: "Unknown error"
                 binding.statusText.text = getString(R.string.status_otp_failed, errorMessage)
                 Toast.makeText(this@VerifyPhoneActivity, errorMessage, Toast.LENGTH_LONG).show()
@@ -280,6 +348,22 @@ class VerifyPhoneActivity : AppCompatActivity() {
         val tenantQrToken = getTenantQrTokenOrShowError() ?: return
         val deviceId = obtainDeviceId()
         val deviceInfo = obtainDeviceInfo()
+        val traceId = AppTraceLogger.newTraceId("register-no-otp")
+        postDiagnosticEvent(
+            traceId = traceId,
+            flow = "verification",
+            step = "register_without_otp_started",
+            status = "info",
+            message = "User started registration without OTP.",
+            phone = phone,
+            deviceId = deviceId,
+            appVersion = deviceInfo.appVersion,
+            context = mapOf(
+                "otpEnabled" to otpEnabled,
+                "qrTokenPresent" to tenantQrToken.isNotBlank(),
+                "referralCodePresent" to referralCode.isNotBlank()
+            )
+        )
         busy = true
         refreshActionState()
         binding.statusText.text = getString(R.string.status_registering_user)
@@ -293,9 +377,22 @@ class VerifyPhoneActivity : AppCompatActivity() {
                         phone = phone,
                         deviceId = deviceId,
                         deviceInfo = deviceInfo,
-                        referralCode = referralCode
+                        referralCode = referralCode,
+                        traceId = traceId
                     )
                 }
+
+                postDiagnosticEvent(
+                    traceId = traceId,
+                    flow = "verification",
+                    step = "register_without_otp_completed",
+                    status = "success",
+                    message = "User registration without OTP completed.",
+                    userId = registered.userId,
+                    phone = registered.phone,
+                    deviceId = deviceId,
+                    appVersion = deviceInfo.appVersion
+                )
 
                 binding.statusText.text = getString(R.string.status_phone_verified)
                 Toast.makeText(this@VerifyPhoneActivity, getString(R.string.toast_phone_verified), Toast.LENGTH_SHORT).show()
@@ -311,6 +408,16 @@ class VerifyPhoneActivity : AppCompatActivity() {
                 )
                 finish()
             } catch (e: Exception) {
+                postDiagnosticEvent(
+                    traceId = traceId,
+                    flow = "verification",
+                    step = "register_without_otp_failed",
+                    status = "error",
+                    message = e.message ?: "Unknown registration without OTP failure.",
+                    phone = phone,
+                    deviceId = deviceId,
+                    appVersion = deviceInfo.appVersion
+                )
                 val errorMessage = e.message ?: "Unknown error"
                 binding.statusText.text = getString(R.string.status_otp_failed, errorMessage)
                 Toast.makeText(this@VerifyPhoneActivity, errorMessage, Toast.LENGTH_LONG).show()
@@ -514,6 +621,45 @@ class VerifyPhoneActivity : AppCompatActivity() {
         AppUpdateManager.showUpdateDialog(this, requirement) {
             forceUpdateRequired = false
             refreshActionState()
+        }
+    }
+
+    private fun postDiagnosticEvent(
+        traceId: String,
+        flow: String,
+        step: String,
+        status: String,
+        message: String,
+        userId: Int? = null,
+        phone: String = "",
+        deviceId: String = "",
+        appVersion: String = BuildConfig.VERSION_NAME,
+        context: Map<String, Any?> = emptyMap()
+    ) {
+        val effectiveQrToken = qrToken.ifBlank { tenantLaunchManager.getContext().qrToken }
+        val effectiveReferralCode = referralCode.ifBlank { tenantLaunchManager.getContext().referralCode }
+        val effectiveTenantCode = tenantCode.ifBlank { tenantLaunchManager.getContext().tenantCode }
+
+        lifecycleScope.launch(Dispatchers.IO) {
+            syncService.reportClientEvent(
+                baseUrl = BuildConfig.APP_BASE_URL,
+                tenantQrToken = effectiveQrToken,
+                referralCode = effectiveReferralCode,
+                traceId = traceId,
+                event = ClientDiagnosticEvent(
+                    flow = flow,
+                    step = step,
+                    status = status,
+                    message = message,
+                    screen = "VerifyPhoneActivity",
+                    userId = userId,
+                    phone = phone,
+                    deviceId = deviceId,
+                    appVersion = appVersion,
+                    tenantCode = effectiveTenantCode,
+                    context = context
+                )
+            )
         }
     }
 

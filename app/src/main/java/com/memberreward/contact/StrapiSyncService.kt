@@ -12,6 +12,7 @@ import okhttp3.logging.HttpLoggingInterceptor
 import org.json.JSONArray
 import org.json.JSONObject
 import java.io.File
+import java.net.URL
 
 data class SyncResult(
     val created: Int,
@@ -53,6 +54,21 @@ data class AppBootstrapResult(
     val forceUpdate: Boolean,
 )
 
+data class ClientDiagnosticEvent(
+    val flow: String,
+    val step: String,
+    val status: String = "info",
+    val message: String = "",
+    val screen: String = "",
+    val userId: Int? = null,
+    val phone: String = "",
+    val deviceId: String = "",
+    val appVersion: String = BuildConfig.VERSION_NAME,
+    val platform: String = "android",
+    val tenantCode: String = "",
+    val context: Map<String, Any?> = emptyMap(),
+)
+
 class StrapiSyncService {
 
     private val jsonMediaType = "application/json; charset=utf-8".toMediaType()
@@ -69,8 +85,18 @@ class StrapiSyncService {
         baseUrl: String,
         tenantQrToken: String,
         phone: String,
-        referralCode: String = ""
+        referralCode: String = "",
+        traceId: String = AppTraceLogger.newTraceId("otp-send")
     ): PhoneOtpSendResult {
+        AppTraceLogger.i(
+            "StrapiSyncService",
+            traceId,
+            "send_phone_otp_started",
+            "baseUrl" to baseUrl,
+            "phone" to phone,
+            "qrTokenPresent" to tenantQrToken.isNotBlank(),
+            "referralCodePresent" to referralCode.isNotBlank()
+        )
         val payload = JSONObject().put("phone", phone)
             .apply {
                 if (referralCode.isNotBlank()) {
@@ -80,9 +106,11 @@ class StrapiSyncService {
         val response = executeJsonRequest(
             Request.Builder()
                 .url(buildUrl(baseUrl, "api/phone-verification/send-otp"))
-                .applyTenantLaunchToken(tenantQrToken)
+                .applyTenantLaunchToken(tenantQrToken, referralCode, traceId = traceId)
                 .post(payload.toString().toRequestBody(jsonMediaType))
-                .build()
+                .build(),
+            traceId = traceId,
+            operation = "send_phone_otp"
         )
 
         val data = response.getJSONObject("data")
@@ -97,8 +125,18 @@ class StrapiSyncService {
         tenantQrToken: String,
         phone: String,
         code: String,
-        referralCode: String = ""
+        referralCode: String = "",
+        traceId: String = AppTraceLogger.newTraceId("otp-verify")
     ): PhoneOtpVerifyResult {
+        AppTraceLogger.i(
+            "StrapiSyncService",
+            traceId,
+            "verify_phone_otp_started",
+            "baseUrl" to baseUrl,
+            "phone" to phone,
+            "qrTokenPresent" to tenantQrToken.isNotBlank(),
+            "referralCodePresent" to referralCode.isNotBlank()
+        )
         val payload = JSONObject()
             .put("phone", phone)
             .put("code", code)
@@ -111,9 +149,11 @@ class StrapiSyncService {
         val response = executeJsonRequest(
             Request.Builder()
                 .url(buildUrl(baseUrl, "api/phone-verification/verify-otp"))
-                .applyTenantLaunchToken(tenantQrToken)
+                .applyTenantLaunchToken(tenantQrToken, referralCode, traceId = traceId)
                 .post(payload.toString().toRequestBody(jsonMediaType))
-                .build()
+                .build(),
+            traceId = traceId,
+            operation = "verify_phone_otp"
         )
 
         val data = response.getJSONObject("data")
@@ -129,8 +169,20 @@ class StrapiSyncService {
         phone: String,
         deviceId: String,
         deviceInfo: DeviceInfo,
-        referralCode: String = ""
+        referralCode: String = "",
+        traceId: String = AppTraceLogger.newTraceId("register-user")
     ): RegisteredUserResult {
+        AppTraceLogger.i(
+            "StrapiSyncService",
+            traceId,
+            "register_verified_user_started",
+            "baseUrl" to baseUrl,
+            "phone" to phone,
+            "deviceId" to deviceId,
+            "appVersion" to deviceInfo.appVersion,
+            "qrTokenPresent" to tenantQrToken.isNotBlank(),
+            "referralCodePresent" to referralCode.isNotBlank()
+        )
         val payload = JSONObject()
             .put("phone", phone)
             .put("deviceId", deviceId)
@@ -150,9 +202,11 @@ class StrapiSyncService {
         val response = executeJsonRequest(
             Request.Builder()
                 .url(buildUrl(baseUrl, "api/phone-verification/register-user"))
-                .applyTenantLaunchToken(tenantQrToken)
+                .applyTenantLaunchToken(tenantQrToken, referralCode, traceId = traceId, deviceId = deviceId, appVersion = deviceInfo.appVersion)
                 .post(payload.toString().toRequestBody(jsonMediaType))
-                .build()
+                .build(),
+            traceId = traceId,
+            operation = "register_verified_user"
         )
 
         val data = response.getJSONObject("data")
@@ -179,8 +233,20 @@ class StrapiSyncService {
         birthday: String,
         occupation: String,
         deviceId: String,
-        deviceInfo: DeviceInfo
+        deviceInfo: DeviceInfo,
+        traceId: String = AppTraceLogger.newTraceId("profile-update")
     ) {
+        AppTraceLogger.i(
+            "StrapiSyncService",
+            traceId,
+            "update_user_profile_started",
+            "userId" to userId,
+            "deviceId" to deviceId,
+            "email" to userEmail,
+            "fullNamePresent" to userFullName.isNotBlank(),
+            "qrTokenPresent" to tenantQrToken.isNotBlank(),
+            "referralCodePresent" to referralCode.isNotBlank()
+        )
         val payload = JSONObject().put(
             "data",
             JSONObject()
@@ -208,16 +274,32 @@ class StrapiSyncService {
         executeJsonRequest(
             Request.Builder()
                 .url(buildUrl(baseUrl, "api/app-users/$userId"))
-                .applyTenantLaunchToken(tenantQrToken, referralCode)
+                .applyTenantLaunchToken(
+                    tenantQrToken,
+                    referralCode,
+                    traceId = traceId,
+                    deviceId = deviceId,
+                    appVersion = deviceInfo.appVersion
+                )
                 .put(payload.toString().toRequestBody(jsonMediaType))
-                .build()
+                .build(),
+            traceId = traceId,
+            operation = "update_user_profile"
         )
     }
 
     suspend fun bootstrapTenant(
         baseUrl: String,
-        tenantQrToken: String
+        tenantQrToken: String,
+        traceId: String = AppTraceLogger.newTraceId("bootstrap")
     ): AppBootstrapResult {
+        AppTraceLogger.d(
+            "StrapiSyncService",
+            traceId,
+            "bootstrap_tenant_started",
+            "baseUrl" to baseUrl,
+            "qrTokenPresent" to tenantQrToken.isNotBlank()
+        )
         val response = executeJsonRequest(
             Request.Builder()
                 .url(buildUrl(baseUrl, "api/app-bootstrap") {
@@ -226,7 +308,9 @@ class StrapiSyncService {
                     }
                 })
                 .get()
-                .build()
+                .build(),
+            traceId = traceId,
+            operation = "bootstrap_tenant"
         )
 
         val data = response.getJSONObject("data")
@@ -246,8 +330,18 @@ class StrapiSyncService {
         tenantQrToken: String,
         referralCode: String = "",
         userId: Int,
-        contacts: List<PhoneContact>
+        contacts: List<PhoneContact>,
+        traceId: String = AppTraceLogger.newTraceId("contact-sync")
     ): SyncResult {
+        AppTraceLogger.i(
+            "StrapiSyncService",
+            traceId,
+            "sync_contacts_started",
+            "userId" to userId,
+            "contacts" to contacts.size,
+            "qrTokenPresent" to tenantQrToken.isNotBlank(),
+            "referralCodePresent" to referralCode.isNotBlank()
+        )
         var createdCount = 0
         var updatedCount = 0
 
@@ -257,18 +351,27 @@ class StrapiSyncService {
                 tenantQrToken = tenantQrToken,
                 referralCode = referralCode,
                 userId = userId,
-                phone = contact.phone
+                phone = contact.phone,
+                traceId = traceId
             )
 
             if (existingContactId == null) {
-                createContact(baseUrl, tenantQrToken, referralCode, userId, contact)
+                createContact(baseUrl, tenantQrToken, referralCode, userId, contact, traceId)
                 createdCount += 1
             } else {
-                updateContact(baseUrl, tenantQrToken, referralCode, existingContactId, userId, contact)
+                updateContact(baseUrl, tenantQrToken, referralCode, existingContactId, userId, contact, traceId)
                 updatedCount += 1
             }
         }
 
+        AppTraceLogger.i(
+            "StrapiSyncService",
+            traceId,
+            "sync_contacts_completed",
+            "userId" to userId,
+            "created" to createdCount,
+            "updated" to updatedCount
+        )
         return SyncResult(createdCount, updatedCount)
     }
 
@@ -278,8 +381,20 @@ class StrapiSyncService {
         referralCode: String = "",
         userId: Int,
         imageFile: File,
-        mimeType: String = "image/jpeg"
+        mimeType: String = "image/jpeg",
+        traceId: String = AppTraceLogger.newTraceId("profile-image")
     ): String {
+        AppTraceLogger.i(
+            "StrapiSyncService",
+            traceId,
+            "upload_user_profile_image_started",
+            "userId" to userId,
+            "fileName" to imageFile.name,
+            "fileSize" to imageFile.length(),
+            "mimeType" to mimeType,
+            "qrTokenPresent" to tenantQrToken.isNotBlank(),
+            "referralCodePresent" to referralCode.isNotBlank()
+        )
         val requestBody = MultipartBody.Builder()
             .setType(MultipartBody.FORM)
             .addFormDataPart(
@@ -292,9 +407,16 @@ class StrapiSyncService {
         val response = executeJsonRequest(
             Request.Builder()
                 .url(buildUrl(baseUrl, "api/app-users/$userId/profile-image"))
-                .applyTenantLaunchToken(tenantQrToken, referralCode, includeJsonContentType = false)
+                .applyTenantLaunchToken(
+                    tenantQrToken,
+                    referralCode,
+                    includeJsonContentType = false,
+                    traceId = traceId
+                )
                 .post(requestBody)
-                .build()
+                .build(),
+            traceId = traceId,
+            operation = "upload_user_profile_image"
         )
 
         val uploadedImageUrl = response
@@ -310,28 +432,99 @@ class StrapiSyncService {
             baseUrl = baseUrl,
             tenantQrToken = tenantQrToken,
             referralCode = referralCode,
-            userId = userId
+            userId = userId,
+            traceId = traceId
         )
 
         if (verifiedImageUrl.isBlank()) {
             throw IllegalStateException("Screenshot upload could not be confirmed on the server.")
         }
 
+        AppTraceLogger.i(
+            "StrapiSyncService",
+            traceId,
+            "upload_user_profile_image_completed",
+            "userId" to userId,
+            "verifiedImageUrl" to verifiedImageUrl
+        )
         return verifiedImageUrl
+    }
+
+    suspend fun reportClientEvent(
+        baseUrl: String,
+        tenantQrToken: String,
+        referralCode: String = "",
+        traceId: String,
+        event: ClientDiagnosticEvent
+    ) {
+        val payload = JSONObject()
+            .put("flow", event.flow)
+            .put("step", event.step)
+            .put("status", event.status)
+            .put("message", event.message)
+            .put("screen", event.screen)
+            .put("platform", event.platform)
+            .put("tenantCode", event.tenantCode)
+            .put("appVersion", event.appVersion)
+            .put("deviceId", event.deviceId)
+
+        if (event.userId != null) {
+            payload.put("userId", event.userId)
+        }
+        if (event.phone.isNotBlank()) {
+            payload.put("phone", event.phone)
+        }
+        if (event.context.isNotEmpty()) {
+            val contextJson = JSONObject()
+            event.context.forEach { (key, value) ->
+                contextJson.put(key, value)
+            }
+            payload.put("context", contextJson)
+        }
+
+        runCatching {
+            executeJsonRequest(
+                Request.Builder()
+                    .url(buildUrl(baseUrl, "api/client-events"))
+                    .applyTenantLaunchToken(
+                        tenantQrToken = tenantQrToken,
+                        referralCode = referralCode,
+                        traceId = traceId,
+                        deviceId = event.deviceId,
+                        appVersion = event.appVersion
+                    )
+                    .post(payload.toString().toRequestBody(jsonMediaType))
+                    .build(),
+                traceId = traceId,
+                operation = "report_client_event"
+            )
+        }.onFailure { error ->
+            AppTraceLogger.w(
+                "StrapiSyncService",
+                traceId,
+                "report_client_event_failed",
+                "step" to event.step,
+                "status" to event.status,
+                "message" to (error.message ?: "unknown")
+            )
+        }
     }
 
     private fun fetchUserImageUrl(
         baseUrl: String,
         tenantQrToken: String,
         referralCode: String = "",
-        userId: Int
+        userId: Int,
+        traceId: String
     ): String {
         val response = executeJsonRequest(
             Request.Builder()
                 .url(buildUrl(baseUrl, "api/app-users/$userId"))
-                .applyTenantLaunchToken(tenantQrToken, referralCode)
+                .applyTenantLaunchToken(tenantQrToken, referralCode, traceId = traceId)
                 .get()
-                .build()
+                .build(),
+            traceId = traceId,
+            operation = "fetch_user_image_url"
         )
 
         return response
@@ -346,7 +539,8 @@ class StrapiSyncService {
         tenantQrToken: String,
         referralCode: String = "",
         userId: Int,
-        phone: String
+        phone: String,
+        traceId: String
     ): Int? {
         val url = buildUrl(baseUrl, "api/app-users/$userId/contacts") {
             addQueryParameter("phone", phone)
@@ -356,9 +550,11 @@ class StrapiSyncService {
         val response = executeJsonRequest(
             Request.Builder()
                 .url(url)
-                .applyTenantLaunchToken(tenantQrToken, referralCode)
+                .applyTenantLaunchToken(tenantQrToken, referralCode, traceId = traceId)
                 .get()
-                .build()
+                .build(),
+            traceId = traceId,
+            operation = "find_existing_contact"
         )
 
         val items: JSONArray = response.getJSONArray("data")
@@ -370,16 +566,19 @@ class StrapiSyncService {
         tenantQrToken: String,
         referralCode: String = "",
         userId: Int,
-        contact: PhoneContact
+        contact: PhoneContact,
+        traceId: String
     ) {
         val payload = JSONObject().put("data", buildContactJson(userId, contact))
 
         executeJsonRequest(
             Request.Builder()
                 .url(buildUrl(baseUrl, "api/contacts"))
-                .applyTenantLaunchToken(tenantQrToken, referralCode)
+                .applyTenantLaunchToken(tenantQrToken, referralCode, traceId = traceId)
                 .post(payload.toString().toRequestBody(jsonMediaType))
-                .build()
+                .build(),
+            traceId = traceId,
+            operation = "create_contact"
         )
     }
 
@@ -389,16 +588,19 @@ class StrapiSyncService {
         referralCode: String = "",
         contactId: Int,
         userId: Int,
-        contact: PhoneContact
+        contact: PhoneContact,
+        traceId: String
     ) {
         val payload = JSONObject().put("data", buildContactJson(userId, contact))
 
         executeJsonRequest(
             Request.Builder()
                 .url(buildUrl(baseUrl, "api/contacts/$contactId"))
-                .applyTenantLaunchToken(tenantQrToken, referralCode)
+                .applyTenantLaunchToken(tenantQrToken, referralCode, traceId = traceId)
                 .put(payload.toString().toRequestBody(jsonMediaType))
-                .build()
+                .build(),
+            traceId = traceId,
+            operation = "update_contact"
         )
     }
 
@@ -417,17 +619,53 @@ class StrapiSyncService {
             }
     }
 
-    private fun executeJsonRequest(request: Request): JSONObject {
+    private fun executeJsonRequest(request: Request, traceId: String, operation: String): JSONObject {
+        AppTraceLogger.d(
+            "StrapiSyncService",
+            traceId,
+            "request_started",
+            "operation" to operation,
+            "method" to request.method,
+            "url" to summarizeUrl(request.url.toString())
+        )
         client.newCall(request).execute().use { response ->
             val body = response.body?.string().orEmpty()
             if (!response.isSuccessful) {
+                AppTraceLogger.e(
+                    "StrapiSyncService",
+                    traceId,
+                    "request_failed",
+                    null,
+                    "operation" to operation,
+                    "method" to request.method,
+                    "url" to summarizeUrl(request.url.toString()),
+                    "status" to response.code,
+                    "response" to body.take(500)
+                )
                 throw IllegalStateException("HTTP ${response.code}: $body")
             }
 
             if (body.isBlank()) {
+                AppTraceLogger.w(
+                    "StrapiSyncService",
+                    traceId,
+                    "request_empty_response",
+                    "operation" to operation,
+                    "method" to request.method,
+                    "url" to summarizeUrl(request.url.toString())
+                )
                 throw IllegalStateException("Empty response from server.")
             }
 
+            AppTraceLogger.d(
+                "StrapiSyncService",
+                traceId,
+                "request_completed",
+                "operation" to operation,
+                "method" to request.method,
+                "url" to summarizeUrl(request.url.toString()),
+                "status" to response.code
+            )
             return JSONObject(body)
         }
     }
@@ -443,7 +681,10 @@ class StrapiSyncService {
     private fun Request.Builder.applyTenantLaunchToken(
         tenantQrToken: String,
         referralCode: String = "",
-        includeJsonContentType: Boolean = true
+        includeJsonContentType: Boolean = true,
+        traceId: String = "",
+        deviceId: String = "",
+        appVersion: String = BuildConfig.VERSION_NAME
     ): Request.Builder {
         if (tenantQrToken.isNotBlank()) {
             header("x-tenant-qr-token", tenantQrToken)
@@ -451,9 +692,35 @@ class StrapiSyncService {
         if (referralCode.isNotBlank()) {
             header("x-referral-code", referralCode)
         }
+        if (traceId.isNotBlank()) {
+            header("x-trace-id", traceId)
+        }
+        if (deviceId.isNotBlank()) {
+            header("x-device-id", deviceId)
+        }
+        if (appVersion.isNotBlank()) {
+            header("x-app-version", appVersion)
+        }
+        header("x-client-platform", "android")
         if (includeJsonContentType) {
             header("Content-Type", "application/json")
         }
         return this
+    }
+
+    private fun summarizeUrl(url: String): String {
+        return runCatching {
+            val parsed = URL(url)
+            buildString {
+                append(parsed.protocol)
+                append("://")
+                append(parsed.host)
+                append(parsed.path)
+                if (!parsed.query.isNullOrBlank()) {
+                    append('?')
+                    append(parsed.query)
+                }
+            }
+        }.getOrDefault(url)
     }
 }
