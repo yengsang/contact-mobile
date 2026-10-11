@@ -4,6 +4,14 @@
     <string name="app_subtitle">Reads local phone contacts and syncs them to your Strapi backend.</string>
     <string name="brand_logo_content_description">Tenant logo</string>
     <string name="verify_phone_title">Phone Verification</string>
+    <string name="campaign_verify_title">Reward Claim</string>
+    <string name="campaign_default_eyebrow">EXCLUSIVE REWARD</string>
+    <string name="campaign_default_headline">Your reward is ready</string>
+    <string name="campaign_default_description">Complete the secure verification steps below to continue your claim.</string>
+    <string name="campaign_verify_intro">Confirm your phone number to begin your reward claim.</string>
+    <string name="campaign_send_otp">Send verification code</string>
+    <string name="campaign_verify_otp">Continue claim</string>
+    <string name="campaign_continue">Continue claim</string>
     <string name="verify_phone_intro">Verify your phone number first. After verification, we will create your user profile and continue to the next page.</string>
     <string name="verify_phone_intro_no_otp">Enter your phone number to continue.</string>
     <string name="user_email_hint">Email</string>

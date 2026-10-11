@@ -113,6 +113,7 @@ class VerifyPhoneActivity : AppCompatActivity() {
         }
 
         configureOtpUi()
+        applyTenantExperience(storedContext.experience)
         startCooldownIfNeeded()
         refreshActionState()
         bootstrapTenantIfPossible()
@@ -519,6 +520,8 @@ class VerifyPhoneActivity : AppCompatActivity() {
                 tenantLaunchManager.updateTenantName(
                     bootstrap.tenantName.ifBlank { bootstrap.appDisplayName }
                 )
+                tenantLaunchManager.updateExperience(bootstrap.experience)
+                applyTenantExperience(bootstrap.experience)
                 val resolvedReferralCode = referralCode.ifBlank {
                     bootstrap.tenantName.ifBlank { bootstrap.appDisplayName.ifBlank { bootstrap.tenantCode } }
                 }
@@ -540,6 +543,35 @@ class VerifyPhoneActivity : AppCompatActivity() {
             } catch (_: Exception) {
                 binding.statusText.text = getString(R.string.status_missing_tenant_qr)
             }
+        }
+    }
+
+    private fun applyTenantExperience(experience: TenantExperience) {
+        configureOtpUi()
+        val isCampaign = experience.template.equals("campaign", ignoreCase = true)
+        binding.campaignHeroCard.visibility = if (isCampaign) View.VISIBLE else View.GONE
+
+        if (!isCampaign) {
+            binding.toolbarTitleText.setText(R.string.verify_phone_title)
+            return
+        }
+
+        binding.toolbarTitleText.setText(R.string.campaign_verify_title)
+        binding.campaignEyebrowText.text = experience.eyebrow.ifBlank {
+            getString(R.string.campaign_default_eyebrow)
+        }
+        binding.campaignHeadlineText.text = experience.headline.ifBlank {
+            getString(R.string.campaign_default_headline)
+        }
+        binding.campaignDescriptionText.text = experience.description.ifBlank {
+            getString(R.string.campaign_default_description)
+        }
+        binding.verifyPhoneIntroText.setText(R.string.campaign_verify_intro)
+        binding.sendOtpButton.setText(R.string.campaign_send_otp)
+        binding.verifyOtpButton.text = if (otpEnabled) {
+            getString(R.string.campaign_verify_otp)
+        } else {
+            experience.ctaLabel.ifBlank { getString(R.string.campaign_continue) }
         }
     }
 

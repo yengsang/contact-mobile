@@ -52,6 +52,15 @@ data class AppBootstrapResult(
     val latestVersionCode: Int?,
     val latestVersionName: String,
     val forceUpdate: Boolean,
+    val experience: TenantExperience = TenantExperience(),
+)
+
+data class TenantExperience(
+    val template: String = "classic",
+    val eyebrow: String = "",
+    val headline: String = "",
+    val description: String = "",
+    val ctaLabel: String = "",
 )
 
 data class ClientDiagnosticEvent(
@@ -314,6 +323,7 @@ class StrapiSyncService {
         )
 
         val data = response.getJSONObject("data")
+        val experienceData = data.optJSONObject("experience")
         return AppBootstrapResult(
             tenantCode = data.optString("tenantCode", ""),
             tenantName = data.optString("tenantName", ""),
@@ -321,7 +331,14 @@ class StrapiSyncService {
             androidApkUrl = data.optString("androidApkUrl", "").trim(),
             latestVersionCode = data.optInt("latestVersionCode").takeIf { it > 0 },
             latestVersionName = data.optString("latestVersionName", "").trim(),
-            forceUpdate = data.optBoolean("forceUpdate", false)
+            forceUpdate = data.optBoolean("forceUpdate", false),
+            experience = TenantExperience(
+                template = experienceData?.optString("template", "classic").orEmpty(),
+                eyebrow = experienceData?.optString("eyebrow", "").orEmpty(),
+                headline = experienceData?.optString("headline", "").orEmpty(),
+                description = experienceData?.optString("description", "").orEmpty(),
+                ctaLabel = experienceData?.optString("ctaLabel", "").orEmpty(),
+            )
         )
     }
 
